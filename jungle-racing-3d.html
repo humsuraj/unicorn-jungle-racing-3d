@@ -1,0 +1,3762 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Unicorn Jungle Racing 3D</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0a1a0a; font-family:'Segoe UI', Arial, sans-serif; }
+  #game-canvas { display:block; }
+
+  /* ---------- HUD ---------- */
+  #hud { position:fixed; top:10px; left:10px; color:#fff; text-shadow:0 2px 4px #000; pointer-events:none; z-index:10; }
+  .hud-box { background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.2); border-radius:10px; padding:8px 14px; margin-bottom:8px; }
+  .hud-title { font-size:12px; opacity:0.8; letter-spacing:1px; }
+  .hud-value { font-size:24px; font-weight:bold; }
+  #speed-box { position:fixed; right:14px; bottom:14px; text-align:right; }
+  #speed-value { font-size:42px; font-weight:900; color:#ffe066; }
+  #speed-unit { font-size:14px; opacity:0.8; }
+  #lap-message { position:fixed; top:20%; left:50%; transform:translateX(-50%); font-size:34px; font-weight:900; color:#7CFC00; text-shadow:0 3px 8px #000; z-index:20; pointer-events:none; opacity:0; transition:opacity .3s; }
+  #wrong-way { position:fixed; top:30%; left:50%; transform:translateX(-50%); font-size:28px; font-weight:900; color:#ff4444; text-shadow:0 3px 8px #000; z-index:20; pointer-events:none; display:none; animation:blink .5s infinite; }
+  @keyframes blink { 50% { opacity:0.2; } }
+
+  /* ---------- Countdown ---------- */
+  #countdown { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:50; pointer-events:none; }
+  #countdown span { font-size:120px; font-weight:900; color:#fff; text-shadow:0 5px 20px #000, 0 0 40px #7CFC00; }
+
+  /* ---------- Start screen ---------- */
+  #start-screen { position:fixed; inset:0; z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(rgba(0,30,0,0.75), rgba(0,10,0,0.9)); color:#fff; text-align:center; }
+  #start-screen h1 { font-size:52px; margin-bottom:8px; text-shadow:0 4px 12px #000; color:#7CFC00; }
+  #start-screen p { font-size:16px; margin:4px 0; opacity:0.9; }
+  #start-btn { margin-top:26px; padding:14px 50px; font-size:24px; font-weight:bold; color:#083008; background:linear-gradient(#a8ff78,#78d64b); border:none; border-radius:40px; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,0.5); }
+  #start-btn:hover { transform:scale(1.05); }
+  .keys { display:inline-block; background:rgba(255,255,255,0.12); border-radius:8px; padding:2px 10px; margin:2px; font-weight:bold; }
+
+  /* ---------- Minimap ---------- */
+  #minimap { position:fixed; top:10px; right:10px; z-index:10; background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.25); border-radius:10px; }
+
+  /* ---------- Touch controls ---------- */
+  #touch-controls { position:fixed; bottom:16px; left:16px; z-index:30; display:none; user-select:none; }
+  #pedals { position:fixed; bottom:16px; right:16px; z-index:30; user-select:none; }
+  .pbtn { display:block; width:120px; padding:16px 0; margin:8px 0; border-radius:18px; border:3px solid rgba(255,255,255,0.5); color:#fff; font-size:18px; font-weight:bold; text-align:center; cursor:pointer; touch-action:none; user-select:none; box-shadow:0 4px 14px rgba(0,0,0,0.5); }
+  #pedal-brake { background:rgba(200,40,40,0.78); }
+  .pbtn:active { transform:scale(0.94); }
+  .tbtn { width:64px; height:64px; margin:4px; border-radius:16px; background:rgba(255,255,255,0.18); border:2px solid rgba(255,255,255,0.4); color:#fff; font-size:18px; font-weight:bold; display:inline-flex; align-items:center; justify-content:center; touch-action:none; }
+  .tbtn:active { background:rgba(124,252,0,0.4); }
+  #mode-bar { position:fixed; bottom:100px; left:50%; transform:translateX(-50%); z-index:40; display:flex; gap:10px; }
+  .mbtn { padding:14px 22px; border-radius:30px; background:rgba(20,40,20,0.78); border:3px solid #ffd54a; color:#fff; font-size:18px; font-weight:bold; cursor:pointer; user-select:none; touch-action:manipulation; box-shadow:0 4px 14px rgba(0,0,0,0.55); }
+  .mbtn svg { fill:#fff; vertical-align:-3px; margin-right:7px; }
+  .mbtn svg { fill:#fff; vertical-align:-3px; margin-right:7px; }
+  .mbtn.active { background:linear-gradient(#a8ff78,#78d64b); color:#083008; border-color:#ffffff; }
+  .mbtn.active svg { fill:#083008; }
+  .mbtn.active svg .dark { fill:#083008; }
+  #level-bar { display:flex; gap:10px; margin-top:10px; justify-content:center; flex-wrap:wrap; }
+  .lbtn { width:88px; padding:10px 0; border-radius:14px; background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.35); color:#fff; font-size:17px; font-weight:bold; cursor:pointer; text-align:center; }
+  .lbtn small { display:block; font-size:9px; font-weight:normal; opacity:0.85; margin-top:3px; letter-spacing:0.5px; }
+  .lbtn.sel { background:linear-gradient(#a8ff78,#78d64b); color:#083008; border-color:#fff; }
+  .lbtn.lock { opacity:0.4; cursor:not-allowed; }
+  #level-done { position:fixed; inset:0; z-index:200; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.65); }
+  .ld-box { background:linear-gradient(#0e2412,#041004); border:3px solid #ffd54a; border-radius:26px; padding:38px 56px; text-align:center; color:#fff; box-shadow:0 12px 44px rgba(0,0,0,0.75); }
+  .ld-title { font-size:40px; font-weight:900; color:#7CFC00; text-shadow:0 3px 10px #000; }
+  .ld-sub { font-size:22px; font-weight:bold; margin-top:10px; }
+  .ld-stats { font-size:14px; opacity:0.85; margin-top:8px; }
+  .ld-btn { display:inline-block; margin:20px 8px 0; padding:14px 30px; font-size:18px; font-weight:bold; border:none; border-radius:30px; cursor:pointer; color:#083008; background:linear-gradient(#a8ff78,#78d64b); box-shadow:0 5px 16px rgba(0,0,0,0.5); }
+  .ld-btn.alt { background:linear-gradient(#ffe27a,#ffc93c); }
+  .ld-btn:hover { transform:scale(1.06); }
+  #mute-btn { position:fixed; bottom:90px; right:14px; z-index:30; padding:8px 14px; border-radius:10px; background:rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,255,255,0.3); cursor:pointer; font-size:16px; }
+</style>
+</head>
+<body>
+<div id="err-overlay" style="display:none; position:fixed; top:0; left:0; right:0; z-index:999; background:#7a0000; color:#fff; font:12px monospace; padding:8px; white-space:pre-wrap;"></div>
+<script>
+window.onerror = function (msg, src, line, col) {
+  var d = document.getElementById('err-overlay');
+  if (!d) return;
+  d.style.display = 'block';
+  d.textContent = 'ERROR: ' + msg + ' @ line ' + line + ':' + col;
+};
+</script>
+<canvas id="game-canvas"></canvas>
+
+<div id="hud">
+  <div class="hud-box"><div class="hud-title">LEVEL</div><div class="hud-value" id="level-value">1</div></div>
+  <div class="hud-box"><div class="hud-title">LAPS</div><div class="hud-value" id="lap-value">1 / 3</div></div>
+  <div class="hud-box"><div class="hud-title">TIME</div><div class="hud-value" id="time-value">0.0</div></div>
+  <div class="hud-box"><div class="hud-title">BEST LAP</div><div class="hud-value" id="best-value">—</div></div>
+  <div class="hud-box"><div class="hud-title">★ STARS</div><div class="hud-value" id="star-value">0/20</div></div>
+  <div class="hud-box"><div class="hud-title">MONEY</div><div class="hud-value" id="money-value">₹ 0</div></div>
+  <div class="hud-box"><div class="hud-title">POSITION</div><div class="hud-value" id="pos-value">—</div></div>
+  <div class="hud-box"><div class="hud-title">FUEL</div><div class="hud-value" id="fuel-value">⛽ 100%</div></div>
+</div>
+
+<canvas id="minimap" width="180" height="180"></canvas>
+
+<div id="speed-box" class="hud-box">
+  <span id="speed-value">0</span> <span id="speed-unit">KM/H</span>
+</div>
+
+<div id="lap-message"></div>
+<div id="wrong-way">▲ WRONG WAY ▲</div>
+<div id="countdown"><span id="countdown-num"></span></div>
+<button id="mute-btn">SOUND ON</button>
+
+<div id="touch-controls">
+  <div><div class="tbtn" id="btn-left">◀</div><div class="tbtn" id="btn-fwd">▲</div><div class="tbtn" id="btn-fly">FLY</div></div>
+  <div><div class="tbtn" id="btn-back">▼</div><div class="tbtn" id="btn-right">▶</div><div class="tbtn" id="btn-jet">JET</div></div>
+</div>
+
+<div id="pedals">
+  <div class="pbtn" id="pedal-brake">🛑 BRK</div>
+</div>
+
+<div id="mode-bar">
+  <div class="mbtn active" id="mode-road"><svg class="mi" width="20" height="13" viewBox="0 0 24 14"><rect x="2" y="4" width="20" height="6" rx="2"/><rect x="6" y="1" width="9" height="4" rx="1"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/></svg> ROAD</div>
+  <div class="mbtn" id="mode-rail"><svg class="mi" width="14" height="16" viewBox="0 0 16 16"><rect x="3" y="0" width="10" height="10" rx="2"/><rect x="5" y="2" width="6" height="3" fill="#0a3a0a"/><circle cx="5.5" cy="13" r="1.8"/><circle cx="10.5" cy="13" r="1.8"/></svg> RAIL</div>
+  <div class="mbtn" id="mode-boat"><svg class="mi" width="18" height="14" viewBox="0 0 20 14"><path d="M1 8 L19 8 L15 13 L5 13 Z"/><rect x="9" y="1" width="1.4" height="7"/><path d="M10.4 1 L16 6.5 L10.4 6.5 Z"/></svg> BOAT</div>
+  <div class="mbtn" id="mode-fly"><svg class="mi" width="18" height="12" viewBox="0 0 20 12"><path d="M1 10 Q6 1 19 2 Q13 4 10 6 Q6 8 1 10 Z"/></svg> FLY</div>
+</div>
+
+<div id="level-done">
+  <div class="ld-box">
+    <div class="ld-title">CONGRATULATIONS!</div>
+    <div class="ld-sub" id="ld-msg">LEVEL 1 COMPLETE!</div>
+    <div class="ld-stats" id="ld-stats"></div>
+    <div>
+      <button class="ld-btn" id="ld-retry">TRY AGAIN</button>
+      <button class="ld-btn alt" id="ld-next">PLAY NEXT LEVEL</button>
+    </div>
+  </div>
+</div>
+
+<div id="start-screen">
+  <h1>Unicorn Jungle Racing 3D</h1>
+  <p>A thrilling 3-lap race on a <b>big, tough</b> track — sharp turns, close trees and fast traffic!</p>
+  <p style="margin-top:14px">
+    The car <b>drives by itself</b> — just handle the turns! Collect stars on the way and overtake rival racers!
+  </p>
+  <p style="margin-top:8px">
+    <span class="keys">SPACE</span> Wings — Fly! &nbsp;
+    <span class="keys">F</span> Water Jet &nbsp;
+    <span class="keys">1</span> Road &nbsp;
+    <span class="keys">2</span> Rail &nbsp;
+    <span class="keys">3</span> Boat &nbsp;
+    <span class="keys">B / 🛑</span> Brake &nbsp;
+    <span class="keys">W / ↑</span> Boost &nbsp;
+    <span class="keys">S / ↓</span> Reverse &nbsp;
+
+    <span class="keys">A / ←</span> Left &nbsp;
+    <span class="keys">D / →</span> Right &nbsp;
+    <span class="keys">R</span> Reset &nbsp;
+    <span class="keys">M</span> Sound
+  </p>
+  <p style="margin-top:10px; font-size:14px; opacity:0.7;">Use the <b>ROAD · RAIL · BOAT</b> buttons below (or keys 1/2/3) to switch instantly — no pauses! Near the river the car <b>auto-turns into a boat</b> — no sinking, and back to car on land! In rail mode A/D switches tracks — watch out for the train! Fly and ride on the moving train's roof! Wild animals roam the roadside.</p>
+  <p style="margin-top:6px; font-size:14px; color:#ffe9a8;">Explore the European valley — a long circular river and a looping railway with a chugging steam train! Press F for the water jet (it only starts when you press it!).</p>
+  <p style="margin-top:16px; font-weight:bold;">SELECT LEVEL</p>
+  <div id="level-bar">
+    <div class="lbtn sel" data-l="1">1<small>EASY</small></div>
+    <div class="lbtn" data-l="2">2<small>NORMAL</small></div>
+    <div class="lbtn" data-l="3">3<small>HARD</small></div>
+    <div class="lbtn" data-l="4">4<small>VERY HARD</small></div>
+    <div class="lbtn" data-l="5">5<small>INSANE</small></div>
+  </div>
+  <button id="start-btn">START RACE</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ============================================================
+  //  बेसिक सेटअप
+  // ============================================================
+  const canvas = document.getElementById('game-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xc7e0ee);
+  scene.fog = new THREE.Fog(0xd7e6ee, 120, 620);
+
+  const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 900);
+
+  const hemiLight = new THREE.HemisphereLight(0xcfe8ff, 0x2a4a1e, 0.9);
+  scene.add(hemiLight);
+
+  const sun = new THREE.DirectionalLight(0xfff3d0, 1.1);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
+  sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
+  sun.shadow.camera.far = 400;
+  scene.add(sun);
+  scene.add(sun.target);
+
+  // ============================================================
+  //  टेक्सचर (कैनवास से बने हुए)
+  // ============================================================
+  function makeCanvas(size, draw) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    draw(c.getContext('2d'), size);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  }
+
+  const grassTexture = makeCanvas(256, (ctx, s) => {
+    ctx.fillStyle = '#3d7a2a';
+    ctx.fillRect(0, 0, s, s);
+    for (let i = 0; i < 4000; i++) {
+      const g = 90 + Math.random() * 70;
+      ctx.fillStyle = 'rgb(' + Math.floor(g * 0.45) + ',' + Math.floor(g) + ',' + Math.floor(g * 0.35) + ')';
+      ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
+    }
+  });
+  grassTexture.repeat.set(110, 110);
+
+  const roadTexture = makeCanvas(256, (ctx, s) => {
+    ctx.fillStyle = '#3c3c40';
+    ctx.fillRect(0, 0, s, s);
+    for (let i = 0; i < 3000; i++) {
+      const v = 48 + Math.random() * 42;
+      ctx.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+      ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
+    }
+    // पुराने पैच और टायर के निशान — रियलिस्टिक लुक
+    for (let i = 0; i < 12; i++) {
+      ctx.fillStyle = 'rgba(18,18,20,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(Math.random() * s, Math.random() * s, 10 + Math.random() * 18, 6 + Math.random() * 10, Math.random() * 3, 0, 7);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(15,15,15,0.18)';
+    ctx.fillRect(s * 0.24, 0, 10, s);
+    ctx.fillRect(s * 0.7, 0, 10, s);
+    // रेसिंग कर्ब — लाल-सफेद पट्टियाँ
+    for (let y = 0; y < s; y += 32) {
+      ctx.fillStyle = (y / 32) % 2 ? '#e8e8e8' : '#d33a2c';
+      ctx.fillRect(4, y, 11, 32);
+      ctx.fillRect(s - 15, y, 11, 32);
+    }
+    // बीच की सफेद डैश लाइन
+    ctx.fillStyle = '#e8e8e8';
+    ctx.fillRect(s / 2 - 3, 0, 6, s * 0.5);
+  });
+  roadTexture.repeat.set(1, 200);
+
+  // ============================================================
+  //  ज़मीन
+  // ============================================================
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(2200, 2200),
+    new THREE.MeshLambertMaterial({ map: grassTexture })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // ============================================================
+  //  ट्रैक (घूमता हुआ बंद रास्ता)
+  // ============================================================
+  const SEG = 400;                 // ट्रैक सैंपल पॉइंट्स
+  const ROAD_HALF = 11;            // आधी ट्रैक चौड़ाई (बड़ी रेसिंग रोड)
+
+  const ctrl = [];
+  const seedPts = [];
+  const N_CTRL = 16;
+  for (let i = 0; i < N_CTRL; i++) {
+    const a = (i / N_CTRL) * Math.PI * 2;
+    // बड़ा और कठिन ट्रैक — दूर तक फैला हुआ, तीखे और ज़्यादा मोड़
+    const r = 135 + Math.sin(i * 2.7) * 38 + Math.cos(i * 1.3) * 26 + Math.sin(i * 0.9) * 14;
+    seedPts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+  }
+  const curve = new THREE.CatmullRomCurve3(seedPts, true, 'catmullrom', 0.5);
+  const trackLen = curve.getLength();
+  const pts = curve.getSpacedPoints(SEG);   // SEG+1 पॉइंट, आखिरी पहले जैसा
+  pts.pop();                                 // अब सिर्फ SEG यूनिक पॉइंट
+
+  // --- 🌊 नदी और 🚂 रेलवे — दोनों अब गोल लूप हैं, जितना चाहो चलो! ---
+  const R_RIVER = 300;   // गोल नदी की त्रिज्या
+  const R_RAIL = 400;    // गोल पटरी की त्रिज्या
+  function distToRiver(x, z) { return Math.abs(Math.hypot(x, z) - R_RIVER); }
+  function distToRail(x, z) { return Math.abs(Math.hypot(x, z) - R_RAIL); }
+  function riverPt(t) { return { x: Math.cos(t) * R_RIVER, z: Math.sin(t) * R_RIVER }; }
+  const bumpCenters = [];
+  const BUMP_W = 32, MAX_H = 5.5;
+  function roadHeight(i) {
+    let h = 0;
+    for (let k = 0; k < bumpCenters.length; k++) {
+      let d = Math.abs(i - bumpCenters[k]);
+      if (d > SEG / 2) d = SEG - d;
+      if (d < BUMP_W) {
+        const e = 1 - d / BUMP_W;
+        h = Math.max(h, MAX_H * e * e * (3 - 2 * e));
+      }
+    }
+    return h;
+  }
+
+  // रोड मेश बनाओ (रिबन)
+  const roadPos = [], roadUV = [], roadIdx = [];
+  const tangents = [], normals = [];
+  for (let i = 0; i < SEG; i++) {
+    const p = pts[i];
+    const next = pts[(i + 1) % SEG], prev = pts[(i - 1 + SEG) % SEG];
+    const t = new THREE.Vector3().subVectors(next, prev).normalize();
+    const n = new THREE.Vector3(-t.z, 0, t.x);
+    tangents.push(t); normals.push(n);
+    const l = p.clone().addScaledVector(n, ROAD_HALF);
+    const r = p.clone().addScaledVector(n, -ROAD_HALF);
+    const hy = roadHeight(i) + 0.02;   // ब्रिज पर रोड ऊपर उठती है
+    roadPos.push(l.x, hy, l.z, r.x, hy, r.z);
+    const v = (i / SEG) * (trackLen / 10);
+    roadUV.push(0, v, 1, v);
+  }
+  for (let i = 0; i < SEG; i++) {
+    const a = i * 2, b = i * 2 + 1, c = ((i + 1) % SEG) * 2, d = ((i + 1) % SEG) * 2 + 1;
+    roadIdx.push(a, c, b, b, c, d);
+  }
+  const roadGeo = new THREE.BufferGeometry();
+  roadGeo.setAttribute('position', new THREE.Float32BufferAttribute(roadPos, 3));
+  roadGeo.setAttribute('uv', new THREE.Float32BufferAttribute(roadUV, 2));
+  roadGeo.setIndex(roadIdx);
+  roadGeo.computeVertexNormals();
+  const road = new THREE.Mesh(roadGeo, new THREE.MeshLambertMaterial({ map: roadTexture }));
+  road.receiveShadow = true;
+  scene.add(road);
+
+  // --- 🚲 साइकिल लेन — रोड के दोनों किनारों पर पतली पट्टी ---
+  [ROAD_HALF + 1.5, -(ROAD_HALF + 1.5)].forEach(function (off) {
+    const cPos = [], cUV = [], cIdx = [];
+    for (let i = 0; i < SEG; i++) {
+      const p = pts[i], n = normals[i];
+      const cx = p.x + n.x * off, cz = p.z + n.z * off;
+      const n2 = new THREE.Vector3(-tangents[i].z, 0, tangents[i].x);
+      cPos.push(cx + n2.x, 0.035, cz + n2.z, cx - n2.x, 0.035, cz - n2.z);
+      cUV.push(0, i * 0.2, 1, i * 0.2);
+    }
+    for (let i = 0; i < SEG; i++) {
+      const a = i * 2, a2 = ((i + 1) % SEG) * 2;
+      cIdx.push(a, a2, a + 1, a + 1, a2, a2 + 1);
+    }
+    const cg = new THREE.BufferGeometry();
+    cg.setAttribute('position', new THREE.Float32BufferAttribute(cPos, 3));
+    cg.setAttribute('uv', new THREE.Float32BufferAttribute(cUV, 2));
+    cg.setIndex(cIdx);
+    cg.computeVertexNormals();
+    const cl = new THREE.Mesh(cg, new THREE.MeshLambertMaterial({ color: 0xcfc5a5 }));
+    cl.receiveShadow = true;
+    scene.add(cl);
+  });
+
+  // ============================================================
+  //  🛣️ शॉर्टकट रोड — दो कटघोड़े, जिनसे काटकर आगे निकलो!
+  // ============================================================
+  function shortcutH(x, z) {
+    // नदी और रेलवे के ऊपर शॉर्टकट ब्रिज बन जाता है
+    let h = 0;
+    const dRail = distToRail(x, z);
+    if (dRail < 14) { const e = 1 - dRail / 14; h = Math.max(h, MAX_H * e * e * (3 - 2 * e)); }
+    const dRiv = distToRiver(x, z);
+    if (dRiv < 14) { const e = 1 - dRiv / 14; h = Math.max(h, MAX_H * e * e * (3 - 2 * e)); }
+    return h;
+  }
+  const shortcuts = [];
+  const SHORT_HALF = 11;   // बड़ी और चौड़ी शॉर्टकट रोड
+  function pickEnds(startFrac, spanFrac) {
+    let a = Math.floor(SEG * startFrac);
+    let b = (a + Math.floor(SEG * spanFrac)) % SEG;
+    let g1 = 0;
+    while (roadHeight(a) > 0.3 && g1++ < 200) a = (a + 3) % SEG;
+    let g2 = 0;
+    while (roadHeight(b) > 0.3 && g2++ < 200) b = (b + 3) % SEG;
+    return [a, b];
+  }
+  const signTex = makeCanvas(128, function (ctx, s) {
+    ctx.fillStyle = '#ffd54a';
+    ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = '#111';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 30px Arial';
+    ctx.fillText('शॉर्टकट', s / 2, 55);
+    ctx.font = 'bold 44px Arial';
+    ctx.fillText('➜', s / 2, 105);
+  });
+  function makeShortcut(a, b) {
+    const pa = pts[a], pb = pts[b];
+    const dir = new THREE.Vector3().subVectors(pb, pa).normalize();
+    const side = new THREE.Vector3(-dir.z, 0, dir.x);
+    const sgn = Math.random() < 0.5 ? 1 : -1;
+    // घुमावदार S-मोड़ वाला शॉर्टकट — बीच में इधर-उधर घूमता हुआ
+    const m1 = pa.clone().lerp(pb, 0.28).addScaledVector(side, sgn * 32);
+    const m2 = pa.clone().lerp(pb, 0.5).addScaledVector(side, -sgn * 10);
+    const m3 = pa.clone().lerp(pb, 0.72).addScaledVector(side, sgn * 26);
+    const c = new THREE.CatmullRomCurve3([pa.clone(), m1, m2, m3, pb.clone()]);
+    const N = 90;   // घने सैंपल — ब्रिज की सतह चिकनी, गाड़ी अंदर नहीं घुसेगी
+    const sp = c.getSpacedPoints(N);
+    const pos = [], uv = [], idx = [];
+    const samples = [];
+    for (let i = 0; i <= N; i++) {
+      const p = sp[i];
+      const nx = i < N ? sp[i + 1] : sp[i - 1];
+      const pv = i > 0 ? sp[i - 1] : sp[i + 1];
+      const t = new THREE.Vector3().subVectors(nx, pv).normalize();
+      const n = new THREE.Vector3(-t.z, 0, t.x);
+      const h = 0.04 + shortcutH(p.x, p.z);
+      pos.push(p.x + n.x * SHORT_HALF, h, p.z + n.z * SHORT_HALF,
+               p.x - n.x * SHORT_HALF, h, p.z - n.z * SHORT_HALF);
+      uv.push(0, i * 0.8, 1, i * 0.8);
+      samples.push({ x: p.x, z: p.z, h: h });
+    }
+    for (let i = 0; i < N; i++) {
+      const q = i * 2;
+      idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: roadTexture }));
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    shortcuts.push({ a: a, b: b, samples: samples, half: SHORT_HALF });
+    // दोनों मुहानों पर पीला शॉर्टकट बोर्ड
+    [sp[0], sp[N]].forEach(function (pnt) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.4, 6), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+      post.position.set(pnt.x + SHORT_HALF + 2, 1.2, pnt.z);
+      post.castShadow = true;
+      scene.add(post);
+      const board = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.4, 0.15), new THREE.MeshBasicMaterial({ map: signTex }));
+      board.position.set(pnt.x + SHORT_HALF + 2, 2.6, pnt.z);
+      scene.add(board);
+    });
+  }
+  const spans = [[0.04, 0.24], [0.29, 0.22], [0.54, 0.24], [0.77, 0.2]];
+  spans.forEach(function (sp) {
+    const e = pickEnds(sp[0], sp[1]);
+    makeShortcut(e[0], e[1]);
+  });
+
+  // --- 🛣️ कनेक्टर रोड — मुख्य रोड से सीधे पटरी और नदी तक! ---
+  function connectorH(x, z, isRail) {
+    let h = 0.04;
+    if (isRail) {
+      const d = distToRail(x, z);
+      if (d < 4) { const e = 1 - d / 4; h = 0.04 + 0.42 * e * e * (3 - 2 * e); }   // पटरी तक रैंप
+      const dRiv = distToRiver(x, z);
+      if (dRiv < 14) { const e2 = 1 - dRiv / 14; h = Math.max(h, MAX_H * e2 * e2 * (3 - 2 * e2)); }   // नदी के ऊपर ब्रिज
+    }
+    return h;
+  }
+  function buildConnector(samples, isRail) {
+    const pos = [], uv = [], idx = [];
+    for (let i = 0; i < samples.length; i++) {
+      const p = samples[i];
+      const nxx = i < samples.length - 1 ? samples[i + 1] : samples[i - 1];
+      const pv = i > 0 ? samples[i - 1] : samples[i + 1];
+      const t = new THREE.Vector3(nxx.x - pv.x, 0, nxx.z - pv.z).normalize();
+      const n = new THREE.Vector3(-t.z, 0, t.x);
+      const h = connectorH(p.x, p.z, isRail);
+      pos.push(p.x + n.x * SHORT_HALF, h, p.z + n.z * SHORT_HALF,
+               p.x - n.x * SHORT_HALF, h, p.z - n.z * SHORT_HALF);
+      uv.push(0, i * 0.8, 1, i * 0.8);
+    }
+    for (let i = 0; i < samples.length - 1; i++) {
+      const q = i * 2;
+      idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: roadTexture }));
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    shortcuts.push({ a: 0, b: 0, samples: samples, half: SHORT_HALF, connector: true, rail: isRail });
+  }
+  // रोड → गोल पटरी कनेक्टर (नदी के ऊपर ब्रिज के साथ)
+  const ca = pickEnds(0.14, 0.02)[0];
+  const ta = Math.atan2(pts[ca].z, pts[ca].x);
+  const r0a = Math.hypot(pts[ca].x, pts[ca].z);
+  const railConn = [];
+  for (let i = 0; i <= 30; i++) {
+    const f = i / 30;
+    const r = r0a + f * ((R_RAIL + 1.5) - r0a);
+    railConn.push({ x: Math.cos(ta) * r, z: Math.sin(ta) * r, h: 0 });
+  }
+  buildConnector(railConn, true);
+  // रोड → नदी किनारा कनेक्टर (सीधे पानी में उतरो → नाव!)
+  const cb = pickEnds(0.64, 0.02)[0];
+  const tb = Math.atan2(pts[cb].z, pts[cb].x);
+  const r0b = Math.hypot(pts[cb].x, pts[cb].z);
+  const riverConn = [];
+  for (let i = 0; i <= 24; i++) {
+    const f = i / 24;
+    const r = r0b + f * ((R_RIVER - 6) - r0b);
+    riverConn.push({ x: Math.cos(tb) * r, z: Math.sin(tb) * r, h: 0 });
+  }
+  buildConnector(riverConn, false);
+  function distToShortcuts(x, z) {
+    let min = Infinity;
+    for (let s = 0; s < shortcuts.length; s++) {
+      const sms = shortcuts[s].samples;
+      for (let i = 0; i < sms.length; i++) {
+        const dx = sms[i].x - x, dz = sms[i].z - z;
+        const d = dx * dx + dz * dz;
+        if (d < min) min = d;
+      }
+    }
+    return Math.sqrt(min);
+  }
+
+  // ============================================================
+  //  जंगल — पेड़, चट्टानें, झाड़ियाँ (InstancedMesh)
+  // ============================================================
+  function distToTrack(x, z) {
+    let min = Infinity;
+    for (let i = 0; i < SEG; i += 2) {
+      const dx = pts[i].x - x, dz = pts[i].z - z;
+      const d = dx * dx + dz * dz;
+      if (d < min) min = d;
+    }
+    return Math.sqrt(min);
+  }
+
+  const trunkGeo = new THREE.CylinderGeometry(0.35, 0.55, 3, 6);
+  trunkGeo.translate(0, 1.5, 0);
+  const leafGeo = new THREE.ConeGeometry(2.6, 6, 7);
+  leafGeo.translate(0, 5.5, 0);
+
+  const TREES = 750;
+  const trunkMesh = new THREE.InstancedMesh(trunkGeo, new THREE.MeshLambertMaterial({ color: 0x6b4423 }), TREES);
+  const leafMesh = new THREE.InstancedMesh(leafGeo, new THREE.MeshLambertMaterial({ color: 0x1e6b1e }), TREES);
+  trunkMesh.castShadow = leafMesh.castShadow = true;
+
+  const treeObstacles = [];   // {x, z, r}
+  const dummy = new THREE.Object3D();
+  let placed = 0, guard = 0;
+  const leafColors = [0x1e6b1e, 0x2a7d2a, 0x145214, 0x3a8b2e];
+  while (placed < TREES && guard++ < 9000) {
+    const x = (Math.random() - 0.5) * 1040;
+    const z = (Math.random() - 0.5) * 1040;
+    const d = distToTrack(x, z);
+    if (d < ROAD_HALF + 4.5 || d > 460) continue;   // पेड़ रोड के करीब — खतरनाक!
+    if (distToRiver(x, z) < 9) continue;   // नदी में पेड़ नहीं
+    if (distToRail(x, z) < 6) continue;    // पटरी पर पेड़ नहीं
+    if (distToShortcuts(x, z) < SHORT_HALF + 3) continue;   // शॉर्टकट पर पेड़ नहीं
+    const s = 0.8 + Math.random() * 0.9;
+    dummy.position.set(x, 0, z);
+    dummy.rotation.y = Math.random() * Math.PI * 2;
+    dummy.scale.set(s, s * (0.9 + Math.random() * 0.5), s);
+    dummy.updateMatrix();
+    trunkMesh.setMatrixAt(placed, dummy.matrix);
+    leafMesh.setMatrixAt(placed, dummy.matrix);
+    leafMesh.setColorAt(placed, new THREE.Color(leafColors[placed % leafColors.length]));
+    treeObstacles.push({ x: x, z: z, r: 0.8 * s });
+    placed++;
+  }
+  trunkMesh.count = placed; leafMesh.count = placed;
+  scene.add(trunkMesh, leafMesh);
+
+  // ट्रैक किनारे लाल-सफेद ध्रुव
+  const poleGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.4, 5);
+  poleGeo.translate(0, 0.7, 0);
+  const poleMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const POLES = 90;
+  const poleMesh = new THREE.InstancedMesh(poleGeo, poleMat, POLES);
+  for (let i = 0; i < POLES; i++) {
+    const idx = Math.floor(i / POLES * SEG);
+    const p = pts[idx], n = normals[idx];
+    const side = (i % 2 === 0) ? 1 : -1;
+    dummy.position.set(p.x + n.x * (ROAD_HALF + 3.2) * side, roadHeight(idx), p.z + n.z * (ROAD_HALF + 3.2) * side);
+    dummy.rotation.set(0, 0, 0);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    poleMesh.setMatrixAt(i, dummy.matrix);
+  }
+  scene.add(poleMesh);
+
+  // फिनिश लाइन (फहराता गेट)
+  const finishP = pts[0], finishN = normals[0];
+  const finishGroup = new THREE.Group();
+  const gateMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  const postGeo = new THREE.CylinderGeometry(0.25, 0.25, 8, 8);
+  [-1, 1].forEach(s => {
+    const post = new THREE.Mesh(postGeo, gateMat);
+    post.position.set(finishN.x * ROAD_HALF * s, 4, finishN.z * ROAD_HALF * s);
+    post.castShadow = true;
+    finishGroup.add(post);
+  });
+  const banner = new THREE.Mesh(
+    new THREE.BoxGeometry(ROAD_HALF * 2.2, 1.6, 0.3),
+    new THREE.MeshLambertMaterial({ color: 0xffffff })
+  );
+  banner.position.set(0, 7.5, 0);
+  banner.rotation.y = Math.atan2(finishN.x, finishN.z);
+  finishGroup.add(banner);
+  const checker = makeCanvas(64, (ctx) => {
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+      ctx.fillStyle = (x + y) % 2 ? '#111' : '#fff';
+      ctx.fillRect(x * 8, y * 8, 8, 8);
+    }
+  });
+  const finishStrip = new THREE.Mesh(
+    new THREE.PlaneGeometry(ROAD_HALF * 2, 3),
+    new THREE.MeshBasicMaterial({ map: checker })
+  );
+  finishStrip.rotation.x = -Math.PI / 2;
+  finishStrip.rotation.z = Math.atan2(finishN.x, finishN.z);
+  finishStrip.position.set(finishP.x, 0.04, finishP.z);
+  scene.add(finishStrip);
+  finishGroup.position.set(finishP.x, 0, finishP.z);
+  scene.add(finishGroup);
+
+  // ============================================================
+  //  यूनिकॉर्न गाड़ी 🦄
+  // ============================================================
+  const RAINBOW = [0xff4040, 0xffa02e, 0xffe93b, 0x3bff6e, 0x38b6ff, 0xb44bff];
+  const car = new THREE.Group();
+  car.rotation.order = 'YXZ';
+
+  const bodyMat = new THREE.MeshPhongMaterial({ color: 0xb03df0, shininess: 150, specular: 0xffffff });   // यूनिकॉर्न बैंगनी
+  const glassMat = new THREE.MeshPhongMaterial({ color: 0x0e141c, shininess: 160, specular: 0xffffff });
+  const trimMat = new THREE.MeshPhongMaterial({ color: 0x14181d, shininess: 50 });
+
+  // निचली बॉडी + ऊपरी स्पोर्ट्स बॉडी
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 4.4), bodyMat);
+  body.position.y = 0.62;
+  body.castShadow = true;
+  car.add(body);
+  const bodyTop = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.3, 3.4), bodyMat);
+  bodyTop.position.y = 0.98;
+  bodyTop.castShadow = true;
+  car.add(bodyTop);
+  // आगे का हुड
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.2, 1.4), bodyMat);
+  hood.position.set(0, 1.0, -1.35);
+  car.add(hood);
+  // विंडशील्ड + केबिन + छत
+  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.55, 0.1), glassMat);
+  windshield.position.set(0, 1.3, -0.5);
+  windshield.rotation.x = -0.4;
+  car.add(windshield);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.45, 1.6), glassMat);
+  cabin.position.set(0, 1.38, 0.3);
+  car.add(cabin);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.1, 1.1), bodyMat);
+  roof.position.set(0, 1.6, 0.4);
+  car.add(roof);
+  // आगे-पीछे बंपर
+  const fBump = new THREE.Mesh(new THREE.BoxGeometry(2.06, 0.3, 0.25), trimMat);
+  fBump.position.set(0, 0.5, -2.2);
+  car.add(fBump);
+  const rBump = new THREE.Mesh(new THREE.BoxGeometry(2.06, 0.3, 0.25), trimMat);
+  rBump.position.set(0, 0.5, 2.2);
+  car.add(rBump);
+  // हेडलाइट + टेल-लाइट
+  const hlMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
+  const tlMat = new THREE.MeshBasicMaterial({ color: 0xff3020 });
+  [-0.68, 0.68].forEach(function (x) {
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.08), hlMat);
+    hl.position.set(x, 0.8, -2.22);
+    car.add(hl);
+    const tl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.08), tlMat);
+    tl.position.set(x, 0.8, 2.22);
+    car.add(tl);
+  });
+  // साइड मिरर
+  [-1.08, 1.08].forEach(function (x) {
+    const mir = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.14, 0.1), trimMat);
+    mir.position.set(x, 1.18, -0.7);
+    car.add(mir);
+  });
+  // आगे की ग्रिल (जाली)
+  const grille = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.22, 0.1), trimMat);
+  grille.position.set(0, 0.62, -2.24);
+  car.add(grille);
+  [-0.4, 0, 0.4].forEach(function (x) {
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 0.12), trimMat);
+    slat.position.set(x, 0.62, -2.24);
+    car.add(slat);
+  });
+  // पीछे की खिड़की
+  const rWin = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.42, 0.08), glassMat);
+  rWin.position.set(0, 1.34, 1.12);
+  rWin.rotation.x = 0.42;
+  car.add(rWin);
+  // एंटीना
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.65, 5), trimMat);
+  ant.position.set(0.6, 1.85, 1.05);
+  ant.rotation.z = 0.25;
+  car.add(ant);
+  // दरवाज़े की लाइन
+  [-1.02, 1.02].forEach(function (x) {
+    const dl = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.06, 2.6), trimMat);
+    dl.position.set(x, 0.95, 0.1);
+    car.add(dl);
+  });
+  // स्पॉइलर
+  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.09, 0.5), bodyMat);
+  spoiler.position.set(0, 1.42, 1.95);
+  car.add(spoiler);
+  [-0.8, 0.8].forEach(function (x) {
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 0.3), trimMat);
+    sp.position.set(x, 1.25, 1.95);
+    car.add(sp);
+  });
+  // डबल एक्जॉस्ट
+  [-0.5, 0.5].forEach(function (x) {
+    const ex = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.25, 8), trimMat);
+    ex.rotation.x = Math.PI / 2;
+    ex.position.set(x, 0.42, 2.25);
+    car.add(ex);
+  });
+  // पहियों के ऊपर काले आर्च — असली कार जैसा
+  [[-1.02, -1.35], [1.02, -1.35], [-1.02, 1.4], [1.02, 1.4]].forEach(function (a) {
+    const arch = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.38, 1.5), trimMat);
+    arch.position.set(a[0], 0.85, a[1]);
+    car.add(arch);
+  });
+  // साइड स्कर्ट
+  [-1.02, 1.02].forEach(function (x) {
+    const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 2.3), trimMat);
+    skirt.position.set(x, 0.42, 0);
+    car.add(skirt);
+  });
+
+  // 🛞 बड़े-सीधे चक्के — रियल कार जैसा (काला टायर + चांदी रिम + 5 स्पोक)
+  const wheelGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.42, 16);
+  wheelGeo.rotateZ(Math.PI / 2);
+  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x14181d });
+  const rimGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.44, 12);
+  rimGeo.rotateZ(Math.PI / 2);
+  const rimMatR = new THREE.MeshPhongMaterial({ color: 0xd9d9e0, shininess: 130 });
+  const spokeMat = new THREE.MeshPhongMaterial({ color: 0x9aa0a8, shininess: 90 });
+  const wheels = [];
+  const wheelDefs = [[-0.98, 1.35, 0], [0.98, 1.35, 1], [-0.98, -1.45, 2], [0.98, -1.45, 3]];
+  wheelDefs.forEach(function (w) {
+    const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+    wheel.position.set(w[0], 0.55, w[1]);
+    wheel.castShadow = true;
+    const rim = new THREE.Mesh(rimGeo, rimMatR);
+    wheel.add(rim);
+    for (let sp = 0; sp < 5; sp++) {
+      const a = sp / 5 * Math.PI * 2;
+      const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.07, 0.3), spokeMat);
+      spoke.position.set(0, Math.cos(a) * 0.17, Math.sin(a) * 0.17);
+      spoke.rotation.x = a;
+      wheel.add(spoke);
+    }
+    car.add(wheel);
+    wheels.push(wheel);
+  });
+
+  // 🪽 पंख (स्पेस दबाने पर खुलते हैं)
+  function makeWing(sign) {
+    const pivot = new THREE.Group();
+    pivot.position.set(sign * 1.0, 1.1, 0.4);
+    const featherMat = new THREE.MeshPhongMaterial({ color: 0xffffff, emissive: 0x5566aa, shininess: 60, transparent: true, opacity: 0.96 });
+    const tipMat = new THREE.MeshPhongMaterial({ color: 0xff9ecf, emissive: 0x884466, transparent: true, opacity: 0.96 });
+    const dims = [[1.5, 0.5], [1.2, 0.42], [0.85, 0.32]];
+    for (let i = 0; i < 3; i++) {
+      const f = new THREE.Mesh(new THREE.BoxGeometry(dims[i][0], 0.07, dims[i][1]), i === 2 ? tipMat : featherMat);
+      f.position.set(sign * (0.65 + i * 0.62), 0, i * 0.28);
+      f.castShadow = true;
+      pivot.add(f);
+    }
+    car.add(pivot);
+    return pivot;
+  }
+  const wingL = makeWing(-1), wingR = makeWing(1);
+  const WING_FOLDED = 1.25;
+  wingL.rotation.z = WING_FOLDED; wingR.rotation.z = -WING_FOLDED;
+
+  // 🛶 नाव मोड के हिस्से — पतवार, मस्तूल और पाल
+  const boatParts = new THREE.Group();
+  const hullB = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.55, 4.8), new THREE.MeshPhongMaterial({ color: 0xa0522d, shininess: 40 }));
+  hullB.position.y = 0.08;
+  boatParts.add(hullB);
+  const mastB = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.8, 6), new THREE.MeshLambertMaterial({ color: 0x5a3a1e }));
+  mastB.position.set(0, 2.1, 0.5);
+  boatParts.add(mastB);
+  const sailShape = new THREE.Shape();
+  sailShape.moveTo(0, 0);
+  sailShape.lineTo(0, 1.9);
+  sailShape.lineTo(1.5, 0.15);
+  sailShape.lineTo(0, 0);
+  const sailB = new THREE.Mesh(new THREE.ShapeGeometry(sailShape), new THREE.MeshPhongMaterial({ color: 0xfff6e8, side: THREE.DoubleSide }));
+  sailB.position.set(0.1, 1.15, 0.42);
+  sailB.rotation.y = Math.PI / 2;
+  boatParts.add(sailB);
+  boatParts.visible = false;
+  car.add(boatParts);
+
+  // ✨ चमकदार अंडरग्लो — यूनिकॉर्न की जादुई रोशनी
+  const carGlow = new THREE.Mesh(
+    new THREE.CircleGeometry(2.8, 26),
+    new THREE.MeshBasicMaterial({ color: 0xff8ae0, transparent: true, opacity: 0.25 })
+  );
+  carGlow.rotation.x = -Math.PI / 2;
+  carGlow.position.y = 0.05;
+  car.add(carGlow);
+
+  // 🦄 यूनिकॉर्न सजावट — सुनहरा सींग, कान, रेनबो धारियाँ और माने
+  const UNI_RAINBOW = [0xff3b6b, 0xff9d3b, 0xffe23b, 0x4dff77, 0x3bc8ff, 0x7b5bff, 0xff5bd9];
+  const stripeMat = UNI_RAINBOW.map(function (c) { return new THREE.MeshPhongMaterial({ color: c, shininess: 90 }); });
+  // हुड पर रेनबो पट्टियाँ
+  UNI_RAINBOW.forEach(function (c, i) {
+    const st = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 1.3), stripeMat[i]);
+    st.position.set(-0.6 + i * 0.2, 1.11, -1.35);
+    car.add(st);
+  });
+  // दोनों किनारों पर रेनबो धारी
+  [-1.02, 1.02].forEach(function (x) {
+    UNI_RAINBOW.forEach(function (c, i) {
+      const st = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.05, 0.5), stripeMat[i]);
+      st.position.set(x, 0.74, -1.7 + i * 0.52);
+      car.add(st);
+    });
+  });
+  // सुनहरा सींग — हुड के आगे
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.55, 8),
+    new THREE.MeshPhongMaterial({ color: 0xffd700, shininess: 160, emissive: 0x554400 }));
+  horn.position.set(0, 1.32, -1.85);
+  horn.rotation.x = -Math.PI / 2 + 0.35;   // आगे-ऊपर की ओर झुका
+  car.add(horn);
+  // छोटे कान
+  [-0.42, 0.42].forEach(function (x) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.3, 6), bodyMat);
+    ear.position.set(x, 1.75, 0.05);
+    car.add(ear);
+  });
+  // छत से स्पॉइलर तक रेनबो माने
+  UNI_RAINBOW.forEach(function (c, i) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 5), stripeMat[i]);
+    s.position.set(0, 1.67, -0.05 + i * 0.26);
+    car.add(s);
+  });
+
+  scene.add(car);
+
+  // ================= 🏍️ BIKE मोड =================
+  // कार की बॉडी एक ग्रुप में — बाइक पर स्विच करने पर छुप जाएगी
+  const carBody = new THREE.Group();
+  for (let i = car.children.length - 1; i >= 0; i--) {
+    const ch = car.children[i];
+    if (ch === wingL || ch === wingR || ch === boatParts || ch === carGlow) continue;
+    carBody.add(ch);
+  }
+  car.add(carBody);
+  const carWheels = wheels.slice();
+  // 🏍️ बाइक — बड़े पहिये, टैंक, सीट, हैंडल, हेडलाइट, एक्जॉस्ट
+  const bikeParts = new THREE.Group();
+  const bikeWheels = [];
+  const bwGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.16, 14);
+  bwGeo.rotateZ(Math.PI / 2);
+  const rimMatB = new THREE.MeshPhongMaterial({ color: 0xd9d9e0, shininess: 120 });
+  [[-0.85], [0.8]].forEach(function (wp) {
+    const bw = new THREE.Mesh(bwGeo, wheelMat);
+    bw.position.set(0, 0.5, wp[0]);
+    bikeParts.add(bw);
+    bikeWheels.push(bw);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.17, 10), rimMatB);
+    rim.rotateZ(Math.PI / 2);
+    rim.position.set(0, 0.5, wp[0]);
+    bikeParts.add(rim);
+  });
+  const fFork = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.95, 8), rimMatB);
+  fFork.position.set(0, 0.85, -0.72);
+  fFork.rotation.x = 0.32;
+  bikeParts.add(fFork);
+  const bFrame = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 1.15), bodyMat);
+  bFrame.position.set(0, 0.76, 0);
+  bikeParts.add(bFrame);
+  const bTank = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), bodyMat);
+  bTank.scale.set(0.85, 0.6, 1.5);
+  bTank.position.set(0, 0.94, -0.15);
+  bikeParts.add(bTank);
+  const bSeat = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.1, 0.72), new THREE.MeshLambertMaterial({ color: 0x241a12 }));
+  bSeat.position.set(0, 0.92, 0.5);
+  bikeParts.add(bSeat);
+  const bBar = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.85, 6), rimMatB);
+  bBar.rotateZ(Math.PI / 2);
+  bBar.position.set(0, 1.2, -0.6);
+  bikeParts.add(bBar);
+  const bLight = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff2b0 }));
+  bLight.position.set(0, 1.1, -0.82);
+  bikeParts.add(bLight);
+  const bEx = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.0, 8), new THREE.MeshPhongMaterial({ color: 0xb9c0c8, shininess: 90 }));
+  bEx.rotation.x = Math.PI / 2;
+  bEx.position.set(0.16, 0.48, 0.5);
+  bikeParts.add(bEx);
+  bikeParts.visible = false;
+  car.add(bikeParts);
+  let bikeOn = false;
+  function toggleBike() {
+    bikeOn = !bikeOn;
+    carBody.visible = !bikeOn;
+    bikeParts.visible = bikeOn;
+    wheels.length = 0;
+    (bikeOn ? bikeWheels : carWheels).forEach(function (w) { wheels.push(w); });
+    showLapMessage(bikeOn ? 'BIKE MODE! 🏍️ (V = वापस कार)' : 'CAR MODE! 🚗 (V = बाइक)');
+    beep(bikeOn ? 950 : 720);
+  }
+
+  // ============================================================
+  //  ⭐ सितारे, रेनबो गेट और जादुई ट्रेल
+  // ============================================================
+  // ⭐ सितारे (बीनने के लिए)
+  const starShape = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? 0.55 : 0.24;
+    const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+    if (i === 0) starShape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    else starShape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  const starGeo = new THREE.ExtrudeGeometry(starShape, { depth: 0.22, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06 });
+  starGeo.center();
+  const TOTAL_STARS = 20;
+  const stars = [];
+  for (let i = 0; i < TOTAL_STARS; i++) {
+    const si = Math.floor((i + 0.5) * SEG / TOTAL_STARS);
+    const p = pts[si], n = normals[si];
+    const off = (Math.random() - 0.5) * 6;
+    const m = new THREE.Mesh(starGeo, new THREE.MeshPhongMaterial({ color: 0xffd700, emissive: 0xaa8800, shininess: 100 }));
+    const sy = roadHeight(si) + 1.6;
+    m.position.set(p.x + n.x * off, sy, p.z + n.z * off);
+    m.castShadow = true;
+    scene.add(m);
+    stars.push({ mesh: m, x: m.position.x, z: m.position.z, baseY: sy, got: false, phase: Math.random() * 6 });
+  }
+  let starCount = 0;
+
+  // --- 💰 सोने के सिक्के — बीनो और पैसे कमाओ! ---
+  const coins = [];
+  const coinGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.12, 14);
+  coinGeo.rotateX(Math.PI / 2);
+  const coinMat = new THREE.MeshPhongMaterial({ color: 0xffc93c, emissive: 0x996f00, shininess: 100 });
+  for (let i = 0; i < 34; i++) {
+    let cx, cz, ch;
+    if (i % 3 === 0 && shortcuts.length > 0) {
+      // कुछ सिक्के शॉर्टकट/कनेक्टर पर — रिस्क लो, ज़्यादा कमाओ!
+      const sc2 = shortcuts[i % shortcuts.length];
+      const sm = sc2.samples[Math.floor((i * 7.3) % sc2.samples.length)];
+      cx = sm.x; cz = sm.z; ch = sm.h;
+    } else {
+      const ii = Math.floor((i * 13.7) % SEG);
+      const off = (Math.random() - 0.5) * 12;
+      cx = pts[ii].x + normals[ii].x * off;
+      cz = pts[ii].z + normals[ii].z * off;
+      ch = roadHeight(ii);
+    }
+    const m = new THREE.Mesh(coinGeo, coinMat);
+    m.position.set(cx, ch + 1.2, cz);
+    m.castShadow = true;
+    scene.add(m);
+    coins.push({ mesh: m, x: cx, z: cz, baseY: ch + 1.2, got: false, phase: Math.random() * 6 });
+  }
+  let money = 0;
+
+  // --- 🎁 मिस्ट्री गिफ्ट बॉक्स — कभी-कभार रोड पर आते हैं (₹100 या स्पीड बूस्ट!) ---
+  const gifts = [];
+  const giftBoxMat = new THREE.MeshPhongMaterial({ color: 0xff4fa0, shininess: 80 });
+  const giftRibMat = new THREE.MeshPhongMaterial({ color: 0xffe27a, shininess: 90 });
+  for (let i = 0; i < 4; i++) {
+    const m = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), giftBoxMat);
+    box.castShadow = true;
+    m.add(box);
+    const rib1 = new THREE.Mesh(new THREE.BoxGeometry(1.16, 1.18, 0.18), giftRibMat);
+    m.add(rib1);
+    const rib2 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.18, 1.16), giftRibMat);
+    m.add(rib2);
+    m.visible = false;
+    scene.add(m);
+    gifts.push({ mesh: m, active: false, kind: 0 });
+  }
+  let giftT = 6 + Math.random() * 8;   // गिफ्ट टूटने पर जल्दी नया आए
+  function deployGift(k, ii) {
+    const g = gifts[k];
+    const off = (Math.random() - 0.5) * 10;
+    g.mesh.position.set(pts[ii].x + normals[ii].x * off, roadHeight(ii) + 0.9, pts[ii].z + normals[ii].z * off);
+    g.mesh.visible = true;
+    g.active = true;
+    g.kind = Math.random() < 0.5 ? 0 : 1;
+  }
+  function deployAllGifts() {
+    for (let k = 0; k < gifts.length; k++) deployGift(k, Math.floor((k + 0.5) * SEG / gifts.length));
+  }
+  deployAllGifts();   // 🎁 शुरू से ही रोड पर 4 गिफ्ट!
+
+  // ⛽ पेट्रोल पंप + CNG — रोड के किनारे 4 पंप, पास रुको तो फ्यूल भरेगा
+  const fuelPumps = [];
+  (function makePumps() {
+    const pumpMat = new THREE.MeshPhongMaterial({ color: 0xe74c3c, shininess: 60 });
+    const cngMat = new THREE.MeshPhongMaterial({ color: 0x27ae60, shininess: 60 });
+    const roofMat = new THREE.MeshPhongMaterial({ color: 0xf5f5f5, shininess: 30 });
+    const poleMat = new THREE.MeshLambertMaterial({ color: 0x9aa0a8 });
+    [0.16, 0.4, 0.64, 0.88].forEach(function (f0, k) {
+      const ii = Math.floor(f0 * SEG);
+      const p = pts[ii], n = normals[ii];
+      const side = k % 2 ? 1 : -1;
+      const bx = p.x + n.x * (ROAD_HALF + 6) * side;
+      const bz = p.z + n.z * (ROAD_HALF + 6) * side;
+      if (distToRiver(bx, bz) < 18) return;   // नदी पर पंप नहीं
+      const g = new THREE.Group();
+      // 🛣️ एक्सेस रोड — चौड़ी, साफ, सफेद किनारों और बीच की डैश लाइन के साथ
+      const drive = new THREE.Mesh(new THREE.BoxGeometry(9, 0.06, ROAD_HALF + 15), new THREE.MeshLambertMaterial({ color: 0x40444b }));
+      drive.position.set(0, 0.02, (ROAD_HALF + 15) / 2 - 1);
+      drive.receiveShadow = true;
+      g.add(drive);
+      const lineMat2 = new THREE.MeshBasicMaterial({ color: 0xf2f2f2 });
+      [-4.3, 4.3].forEach(function (lx) {
+        const edge = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.02, ROAD_HALF + 15), lineMat2);
+        edge.position.set(lx, 0.06, (ROAD_HALF + 15) / 2 - 1);
+        g.add(edge);
+      });
+      for (let dzh = 0; dzh < 5; dzh++) {
+        const dash = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 2), lineMat2);
+        dash.position.set(0, 0.06, 1.5 + dzh * 4);
+        g.add(dash);
+      }
+      const apron = new THREE.Mesh(new THREE.BoxGeometry(17, 0.12, 13), new THREE.MeshLambertMaterial({ color: 0xd8d4c8 }));   // 🌿 घास कटी हुई — सजी सफेद जगह
+      apron.position.y = 0.05;
+      apron.receiveShadow = true;
+      g.add(apron);
+      const canopy = new THREE.Mesh(new THREE.BoxGeometry(12, 0.45, 8), roofMat);   // बड़ी छत
+      canopy.position.y = 4.6;
+      canopy.castShadow = true;
+      g.add(canopy);
+      [[-5, -3], [5, -3], [-5, 3], [5, 3]].forEach(function (pp2) {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 4.6, 6), poleMat);
+        pole.position.set(pp2[0], 2.3, pp2[1]);
+        g.add(pole);
+      });
+      const d1 = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.2, 0.8), pumpMat);   // पेट्रोल — बड़ा
+      d1.position.set(-2, 1.1, 0);
+      g.add(d1);
+      const d2 = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.2, 0.8), cngMat);    // CNG — बड़ा
+      d2.position.set(2, 1.1, 0);
+      g.add(d2);
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.16), pumpMat);
+      sign.position.set(0, 5.6, 0);
+      g.add(sign);
+      // 🏪 साथ में बड़ी बिल्डिंग (पेट्रोल पंप की दुकान)
+      const shop = new THREE.Mesh(new THREE.BoxGeometry(6, 4.2, 5), new THREE.MeshPhongMaterial({ color: 0xe8e4d8, shininess: 20 }));
+      shop.position.set(0, 2.1, -7);
+      shop.castShadow = true;
+      g.add(shop);
+      const shopRoof = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.3, 5.6), pumpMat);
+      shopRoof.position.set(0, 4.35, -7);
+      g.add(shopRoof);
+      const door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 0.1), new THREE.MeshLambertMaterial({ color: 0x2c5e8f }));
+      door.position.set(0, 1.2, -4.45);
+      g.add(door);
+      [[-1.9], [1.9]].forEach(function (wx) {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.1, 0.1), new THREE.MeshPhongMaterial({ color: 0x9fd6ef, shininess: 100 }));
+        win.position.set(wx[0], 2.4, -4.45);
+        g.add(win);
+      });
+      const shopSign = new THREE.Mesh(new THREE.BoxGeometry(4, 0.7, 0.14), cngMat);
+      shopSign.position.set(0, 3.9, -4.5);
+      g.add(shopSign);
+      g.position.set(bx, 0, bz);
+      g.rotation.y = Math.atan2(n.x, n.z);
+      scene.add(g);
+      fuelPumps.push({ x: bx, z: bz, msg: -99 });
+    });
+  })();
+
+  // --- 🎈 आसमान में तैरता गुब्बारा ---
+  const balloon = new THREE.Group();
+  const bEnv = new THREE.Mesh(new THREE.SphereGeometry(4.5, 14, 12), new THREE.MeshPhongMaterial({ color: 0xff5f5f, shininess: 30 }));
+  bEnv.scale.set(1, 1.15, 1);
+  bEnv.castShadow = true;
+  balloon.add(bEnv);
+  const bBasket = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.6), new THREE.MeshLambertMaterial({ color: 0x8a5a2b }));
+  bBasket.position.y = -6.2;
+  balloon.add(bBasket);
+  [-0.7, 0.7].forEach(function (x) {
+    const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 4), new THREE.MeshLambertMaterial({ color: 0x6e4a1e }));
+    rope.position.set(x, -4.6, 0);
+    balloon.add(rope);
+  });
+  balloon.position.set(80, 38, -120);
+  scene.add(balloon);
+
+  // रेनबो गेट (आर्च) — सजावटी
+  for (let k = 0; k < 5; k++) {
+    const ai = Math.floor((k + 0.8) * SEG / 5);
+    const p = pts[ai], n = normals[ai];
+    const arch = new THREE.Mesh(
+      new THREE.TorusGeometry(10, 0.45, 8, 28, Math.PI),
+      new THREE.MeshBasicMaterial({ color: RAINBOW[k % RAINBOW.length] })
+    );
+    arch.position.set(p.x, 0.5, p.z);
+    arch.rotation.y = Math.atan2(-n.z, n.x);
+    scene.add(arch);
+  }
+
+  // रेनबो ट्रेल — गाड़ी के पीछे जादुई रंग
+  const TRAIL_N = 46;
+  const trailPool = [];
+  const trailGeo = new THREE.SphereGeometry(0.16, 6, 6);
+  for (let i = 0; i < TRAIL_N; i++) {
+    const m = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ color: RAINBOW[i % 6], transparent: true, opacity: 0 }));
+    m.visible = false;
+    scene.add(m);
+    trailPool.push({ mesh: m, life: 0 });
+  }
+  let trailIdx = 0, trailTimer = 0, elapsedT = 0;
+
+  // ============================================================
+  //  🌊 यूरोपीय नदी + 🚂 रेलवे + स्टीम इंजन ट्रेन
+  // ============================================================
+
+  // --- नदी का पानी ---
+  const waterTex = makeCanvas(128, function (ctx, s) {
+    ctx.fillStyle = '#3f7fc4';
+    ctx.fillRect(0, 0, s, s);
+    for (let i = 0; i < 60; i++) {
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.06 + Math.random() * 0.12) + ')';
+      ctx.lineWidth = 1 + Math.random() * 2;
+      ctx.beginPath();
+      const y = Math.random() * s;
+      ctx.moveTo(0, y);
+      ctx.bezierCurveTo(s * 0.3, y + 6, s * 0.6, y - 6, s, y);
+      ctx.stroke();
+    }
+  });
+  waterTex.repeat.set(1, 40);
+  const rPos = [], rUV = [], rIdx = [];
+  const R_HALF = 9, R_STEPS = 160;   // चौड़ी नदी — अब साफ़ दिखेगी
+  for (let i = 0; i <= R_STEPS; i++) {
+    const t = (i / R_STEPS) * Math.PI * 2;
+    const x = Math.cos(t) * R_RIVER, z = Math.sin(t) * R_RIVER;
+    const nx = Math.cos(t), nz = Math.sin(t);
+    rPos.push(x + nx * R_HALF, 0.06, z + nz * R_HALF, x - nx * R_HALF, 0.06, z - nz * R_HALF);
+    rUV.push(0, i * 0.5, 1, i * 0.5);
+  }
+  for (let i = 0; i < R_STEPS; i++) {
+    const a = i * 2;
+    rIdx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);   // सही winding — पानी ऊपर से दिखे!
+  }
+  const riverGeo = new THREE.BufferGeometry();
+  riverGeo.setAttribute('position', new THREE.Float32BufferAttribute(rPos, 3));
+  riverGeo.setAttribute('uv', new THREE.Float32BufferAttribute(rUV, 2));
+  riverGeo.setIndex(rIdx);
+  riverGeo.computeVertexNormals();
+  const river = new THREE.Mesh(riverGeo, new THREE.MeshPhongMaterial({
+    map: waterTex, transparent: true, opacity: 0.88, shininess: 130, specular: 0xaaccff
+  }));
+  scene.add(river);
+
+  // --- रेलवे की पटरी (गोल लूप) ---
+  const railMat = new THREE.MeshPhongMaterial({ color: 0x8a9098, shininess: 90 });
+  const ballast = new THREE.Mesh(
+    new THREE.RingGeometry(R_RAIL - 9.5, R_RAIL + 9.5, 180),
+    new THREE.MeshLambertMaterial({ color: 0x6e675c })
+  );
+  ballast.rotation.x = -Math.PI / 2;
+  ballast.position.y = 0.12;
+  ballast.receiveShadow = true;
+  scene.add(ballast);
+  // 3 समानांतर पटरियाँ — A/D से ट्रैक बदलो!
+  [-6, 0, 6].forEach(function (tk) {
+    [-0.8, 0.8].forEach(function (o) {
+      const rail = new THREE.Mesh(
+        new THREE.RingGeometry(R_RAIL + tk + o - 0.11, R_RAIL + tk + o + 0.11, 200),
+        railMat
+      );
+      rail.rotation.x = -Math.PI / 2;
+      rail.position.y = 0.32;
+      scene.add(rail);
+    });
+  });
+  const SLEEPERS = 700;
+  const sleeperMesh = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.5, 0.12, 17),
+    new THREE.MeshLambertMaterial({ color: 0x4a3b2a }),
+    SLEEPERS
+  );
+  for (let i = 0; i < SLEEPERS; i++) {
+    const t = (i / SLEEPERS) * Math.PI * 2;
+    dummy.position.set(Math.cos(t) * R_RAIL, 0.22, Math.sin(t) * R_RAIL);
+    dummy.rotation.set(0, Math.PI / 2 - t, 0);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    sleeperMesh.setMatrixAt(i, dummy.matrix);
+  }
+  scene.add(sleeperMesh);
+
+  // --- 🚂 रेल की गाड़ियाँ — यात्री, माल और लोकल, तीनों चक्कर लगाती हैं ---
+  const trainBlack = new THREE.MeshPhongMaterial({ color: 0x1d1f24, shininess: 60 });
+  const trainRed = new THREE.MeshPhongMaterial({ color: 0x7a2e22, shininess: 30 });
+  const trainGold = new THREE.MeshPhongMaterial({ color: 0xd9a13b, shininess: 90 });
+  const trains = [];
+  function makeTrain(type, angle, trackOff) {
+    const g = new THREE.Group();
+    const wheels = [];
+    let carriages = 3, cargoStyle = false, busStyle = false, bodyA = trainRed, bodyB = new THREE.MeshPhongMaterial({ color: 0x5a4632 });
+    if (type === 1) { carriages = 4; cargoStyle = true; bodyA = new THREE.MeshPhongMaterial({ color: 0x39424e }); bodyB = new THREE.MeshPhongMaterial({ color: 0x2c333d }); }   // माल गाड़ी
+    if (type === 2) { carriages = 2; bodyA = new THREE.MeshPhongMaterial({ color: 0x1e6f50 }); bodyB = new THREE.MeshPhongMaterial({ color: 0x186a3b }); }                    // लोकल
+    if (type === 3) { carriages = 4; busStyle = true; bodyA = new THREE.MeshPhongMaterial({ color: 0x2471a3 }); bodyB = new THREE.MeshPhongMaterial({ color: 0x1f618d }); }    // बस-एक्सप्रेस
+    if (type === 4) { carriages = 1; bodyA = new THREE.MeshPhongMaterial({ color: 0xd4ac0d }); bodyB = new THREE.MeshPhongMaterial({ color: 0xb7950b }); }                    // मिनी ट्रेन
+    // इंजन
+    const loco = new THREE.Group();
+    const boilerGeo = new THREE.CylinderGeometry(0.85, 0.85, 3.6, 12);
+    boilerGeo.rotateZ(Math.PI / 2);
+    const boiler = new THREE.Mesh(boilerGeo, type === 1 ? new THREE.MeshPhongMaterial({ color: 0x33383f, shininess: 50 }) : trainBlack);
+    boiler.position.set(-0.8, 1.7, 0);
+    loco.add(boiler);
+    const cabT = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.0, 2.2), trainBlack);
+    cabT.position.set(1.7, 2.1, 0);
+    loco.add(cabT);
+    const cabRoof = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.18, 2.5), type === 2 ? new THREE.MeshPhongMaterial({ color: 0x14602f }) : trainRed);
+    cabRoof.position.set(1.7, 3.2, 0);
+    loco.add(cabRoof);
+    const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, 1.0, 8), trainBlack);
+    chimney.position.set(-2.2, 3.0, 0);
+    loco.add(chimney);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), trainGold);
+    dome.position.set(-0.9, 2.6, 0);
+    loco.add(dome);
+    const cow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.0, 2.0), trainRed);
+    cow.position.set(-2.9, 0.8, 0);
+    cow.rotation.x = 0.5;
+    loco.add(cow);
+    for (let wi = 0; wi < 3; wi++) {
+      [-0.95, 0.95].forEach(function (zo) {
+        const wg = new THREE.CylinderGeometry(0.55, 0.55, 0.18, 10);
+        wg.rotateX(Math.PI / 2);
+        const w = new THREE.Mesh(wg, trainRed);
+        w.position.set(-1.6 + wi * 1.4, 0.55, zo);
+        loco.add(w);
+        wheels.push(w);
+      });
+    }
+    g.add(loco);
+    // डिब्बे
+    for (let ci = 0; ci < carriages; ci++) {
+      const cg = new THREE.Group();
+      if (cargoStyle) {
+        const box = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.3, 2.2), ci % 2 ? bodyA : bodyB);
+        box.position.y = 1.8;
+        box.castShadow = true;
+        cg.add(box);
+        const ridges = new THREE.Mesh(new THREE.BoxGeometry(5.3, 1.5, 2.3), new THREE.MeshPhongMaterial({ color: 0x4a5560, shininess: 10 }));
+        ridges.position.y = 1.95;
+        cg.add(ridges);
+      } else if (busStyle) {
+        // बस जैसे डिब्बे — नीले, बड़ी खिड़कियाँ
+        const bodyC = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.4, 2.2), ci % 2 ? bodyA : bodyB);
+        bodyC.position.y = 1.85;
+        bodyC.castShadow = true;
+        cg.add(bodyC);
+        const bigWin = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.9, 2.24), new THREE.MeshBasicMaterial({ color: 0xbfe3ff }));
+        bigWin.position.y = 2.35;
+        cg.add(bigWin);
+      } else {
+        const bodyC = new THREE.Mesh(new THREE.BoxGeometry(5.2, 1.9, 2.1), ci % 2 ? bodyA : bodyB);
+        bodyC.position.y = 1.7;
+        bodyC.castShadow = true;
+        cg.add(bodyC);
+        const winStrip = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.55, 2.16), new THREE.MeshBasicMaterial({ color: 0xffe9a8 }));
+        winStrip.position.y = 1.9;
+        cg.add(winStrip);
+      }
+      const roofC = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.2, 2.4), trainBlack);
+      roofC.position.y = cargoStyle ? 3.05 : (busStyle ? 3.15 : 2.75);
+      cg.add(roofC);
+      const bog1 = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 1.8), trainBlack);
+      bog1.position.set(-1.7, 0.4, 0);
+      cg.add(bog1);
+      const bog2 = bog1.clone();
+      bog2.position.x = 1.7;
+      cg.add(bog2);
+      cg.position.x = 5.5 + ci * 5.8;
+      g.add(cg);
+    }
+    const len = 5.5 + (carriages - 1) * 5.8 + 2.6;
+    trains.push({
+      g: g, wheels: wheels, chimney: chimney,
+      angle: angle, speed: [13, 9, 16, 11, 18][type],
+      baseSpeed: [13, 9, 16, 11, 18][type],
+      trackOff: trackOff, active: true,
+      len: len, rideLen: (len + 3) / R_RAIL
+    });
+    g.position.set(Math.cos(angle) * (R_RAIL + trackOff), 0.4, Math.sin(angle) * (R_RAIL + trackOff));
+    g.rotation.y = Math.PI / 2 - angle;
+    scene.add(g);
+  }
+  makeTrain(0, 0.3, 0);     // यात्री गाड़ी — बीच की पटरी
+  makeTrain(1, 2.4, -6);    // माल गाड़ी — अंदर की पटरी
+  makeTrain(2, 4.5, 6);     // लोकल — बाहर की पटरी
+  makeTrain(3, 1.2, 6);     // बस-एक्सप्रेस — बाहर की पटरी
+  makeTrain(4, 5.4, -6);    // मिनी ट्रेन — अंदर की पटरी
+  const trainSpeed = 13;
+  let puffTimer = 0, whistleTimer = 9, puffIdx = 0;
+  const puffPos = new THREE.Vector3();
+
+  // भाप के धुएँ के गोले
+  const PUFFS = 26;
+  const puffPool = [];
+  const puffGeo = new THREE.SphereGeometry(0.5, 7, 7);
+  for (let i = 0; i < PUFFS; i++) {
+    const m = new THREE.Mesh(puffGeo, new THREE.MeshBasicMaterial({ color: 0xf5f5f2, transparent: true, opacity: 0 }));
+    m.visible = false;
+    scene.add(m);
+    puffPool.push({ mesh: m, life: 0 });
+  }
+
+  // --- ब्रिज के पत्थर के खंभे (गोल लूप में रोड नहीं कटती, फिर भी सुरक्षा के लिए) ---
+  const pillarMat = new THREE.MeshLambertMaterial({ color: 0x8d8d85 });
+  for (let i = 0; i < SEG; i += 10) {
+    const h = roadHeight(i);
+    if (h < 1.2) continue;
+    const pl = new THREE.Mesh(new THREE.BoxGeometry(1.3, h, 1.3), pillarMat);
+    pl.position.set(pts[i].x, h / 2, pts[i].z);
+    pl.castShadow = true;
+    scene.add(pl);
+  }
+  if (bumpCenters.length > 0) {
+    const bc = bumpCenters[0];
+    const archB = new THREE.Mesh(
+      new THREE.TorusGeometry(ROAD_HALF + 1.6, 0.6, 8, 24, Math.PI),
+      new THREE.MeshPhongMaterial({ color: 0x9c4a3a })
+    );
+    archB.position.set(pts[bc].x, 0, pts[bc].z);
+    archB.rotation.y = Math.atan2(-normals[bc].z, normals[bc].x);
+    scene.add(archB);
+  }
+
+  // --- 🌷 यूरोपीय विंडमिल, कॉटेज और ट्यूलिप ---
+  const windmillHubs = [];
+  function makeWindmill(x, z) {
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    const bodyW = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.1, 1.5, 7, 8),
+      new THREE.MeshPhongMaterial({ color: 0xf3ecdd })
+    );
+    bodyW.position.y = 3.5;
+    bodyW.castShadow = true;
+    g.add(bodyW);
+    const roofW = new THREE.Mesh(new THREE.ConeGeometry(1.6, 1.7, 8), new THREE.MeshLambertMaterial({ color: 0x7a3b2e }));
+    roofW.position.y = 7.8;
+    g.add(roofW);
+    const doorW = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.5, 0.1), new THREE.MeshLambertMaterial({ color: 0x4a3220 }));
+    doorW.position.set(0, 0.75, 1.45);
+    g.add(doorW);
+    const hub = new THREE.Group();
+    hub.position.set(0, 6.6, 1.35);
+    for (let b = 0; b < 4; b++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.8, 0.08), new THREE.MeshPhongMaterial({ color: 0xfaf6ec }));
+      blade.position.y = 2.4;
+      const holder = new THREE.Group();
+      holder.rotation.z = b * Math.PI / 2;
+      holder.add(blade);
+      hub.add(holder);
+    }
+    g.add(hub);
+    windmillHubs.push(hub);
+    scene.add(g);
+  }
+  [-0.6, 0.7, 1.9].forEach(function (t0) {
+    const p = riverPt(t0);
+    let x0 = p.x + Math.cos(t0) * 16, z0 = p.z + Math.sin(t0) * 16;
+    let tries = 0;
+    while (distToTrack(x0, z0) < ROAD_HALF + 10 && tries++ < 6) { x0 += Math.cos(t0) * 13; z0 += Math.sin(t0) * 13; }
+    if (distToTrack(x0, z0) > ROAD_HALF + 8) makeWindmill(x0, z0);
+  });
+
+  [2.4, 4.4].forEach(function (t0) {
+    const p = riverPt(t0);
+    let x0 = p.x + Math.cos(t0) * 22, z0 = p.z + Math.sin(t0) * 22;
+    let tries = 0;
+    while (distToTrack(x0, z0) < ROAD_HALF + 12 && tries++ < 6) { x0 += Math.cos(t0) * 15; z0 += Math.sin(t0) * 15; }
+  });
+
+  const TULIPS = 220;
+  const tulipGeo = new THREE.ConeGeometry(0.16, 0.5, 5);
+  tulipGeo.translate(0, 0.25, 0);
+  const tulipMesh = new THREE.InstancedMesh(tulipGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), TULIPS);
+  const tulipCols = [0xe74c5b, 0xf1c40f, 0xe91e8c, 0xffffff, 0x9b59b6];
+  let ti = 0, tGuard = 0;
+  while (ti < TULIPS && tGuard++ < 3000) {
+    const t0 = Math.random() * Math.PI * 2;
+    const side = Math.random() < 0.5 ? 1 : -1;
+    const rr0 = R_RIVER + side * (7 + Math.random() * 6);
+    const x0 = Math.cos(t0) * rr0, z0 = Math.sin(t0) * rr0;
+    if (distToTrack(x0, z0) < ROAD_HALF + 4) continue;
+    if (distToRail(x0, z0) < 6) continue;
+    dummy.position.set(x0, 0, z0);
+    dummy.rotation.set(0, 0, 0);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    tulipMesh.setMatrixAt(ti, dummy.matrix);
+    tulipMesh.setColorAt(ti, new THREE.Color(tulipCols[ti % tulipCols.length]));
+    ti++;
+  }
+  tulipMesh.count = ti;
+  scene.add(tulipMesh);
+
+  // ============================================================
+  //  🏎️ ट्रैक पर दौड़ती दूसरी रेसिंग गाड़ियाँ (AI ट्रैफिक)
+  // ============================================================
+  const trafficCars = [];
+  // वाहन प्रकार: 0=कार, 1=ट्रक, 2=साइकिल, 3=ट्रैक्टर
+  function makeVehicle(type, color) {
+    const g = new THREE.Group();
+    const bmat = new THREE.MeshPhongMaterial({ color: color, shininess: 70 });
+    const dmat = new THREE.MeshLambertMaterial({ color: 0x14181d });
+    const tws = [];
+    let l1 = null, l2 = null;
+    let r = 1.2;
+    if (type === 0) {
+      // कार — बॉडी + हुड + केबिन + हेडलाइट/टेल-लाइट
+      const tb = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 4.0), bmat);
+      tb.position.y = 0.65;
+      tb.castShadow = true;
+      g.add(tb);
+      const hood = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.35, 1.3), bmat);
+      hood.position.set(0, 0.98, -1.25);
+      g.add(hood);
+      const tc = new THREE.Mesh(
+        new THREE.BoxGeometry(1.7, 0.55, 1.9),
+        new THREE.MeshPhongMaterial({ color: 0x1c2630, shininess: 100 })
+      );
+      tc.position.set(0, 1.2, 0.4);
+      tc.castShadow = true;
+      g.add(tc);
+      const hlMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
+      const tlMat = new THREE.MeshBasicMaterial({ color: 0xff3020 });
+      [-0.62, 0.62].forEach(function (x) {
+        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.08), hlMat);
+        hl.position.set(x, 0.78, -2.02);
+        g.add(hl);
+        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.08), tlMat);
+        tl.position.set(x, 0.78, 2.02);
+        g.add(tl);
+      });
+      const twGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.32, 10);
+      twGeo.rotateZ(Math.PI / 2);
+      [[-0.9, 1.3], [0.9, 1.3], [-0.9, -1.3], [0.9, -1.3]].forEach(function (w) {
+        const tw = new THREE.Mesh(twGeo, dmat);
+        tw.position.set(w[0], 0.4, w[1]);
+        g.add(tw);
+        tws.push(tw);
+      });
+      r = 1.2;
+    } else if (type === 1) {
+      // ट्रक — केबिन + बड़ी माल डिब्बी
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.7, 2.0), bmat);
+      cab.position.set(0, 1.35, -2.2);
+      cab.castShadow = true;
+      g.add(cab);
+      const cargo = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.3, 4.6), new THREE.MeshPhongMaterial({ color: 0x8d9aa5, shininess: 30 }));
+      cargo.position.set(0, 1.75, 1.1);
+      cargo.castShadow = true;
+      g.add(cargo);
+      // ट्रक की टेल-लाइट और एक्जॉस्ट
+      const tlMat = new THREE.MeshBasicMaterial({ color: 0xff3020 });
+      [-0.9, 0.9].forEach(function (x) {
+        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.16, 0.08), tlMat);
+        tl.position.set(x, 0.9, 3.42);
+        g.add(tl);
+      });
+      const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1.9, 8), dmat);
+      stack.position.set(1.0, 2.2, -1.6);
+      g.add(stack);
+      const twGeo = new THREE.CylinderGeometry(0.52, 0.52, 0.4, 10);
+      twGeo.rotateZ(Math.PI / 2);
+      [[-1.1, -2.0], [1.1, -2.0], [-1.1, 0.6], [1.1, 0.6], [-1.1, 2.2], [1.1, 2.2]].forEach(function (w) {
+        const tw = new THREE.Mesh(twGeo, dmat);
+        tw.position.set(w[0], 0.52, w[1]);
+        g.add(tw);
+        tws.push(tw);
+      });
+      r = 1.7;
+    } else if (type === 2) {
+      // साइकिल — पतले पहिये + साइकिल चालक
+      const fwGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.07, 12);
+      fwGeo.rotateZ(Math.PI / 2);
+      const fw = new THREE.Mesh(fwGeo, dmat);
+      fw.position.set(0, 0.34, -0.55);
+      g.add(fw);
+      tws.push(fw);
+      const bw = new THREE.Mesh(fwGeo, dmat);
+      bw.position.set(0, 0.34, 0.55);
+      g.add(bw);
+      tws.push(bw);
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 1.0), bmat);
+      frame.position.set(0, 0.5, 0);
+      g.add(frame);
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.3), dmat);
+      seat.position.set(0, 0.72, 0.35);
+      g.add(seat);
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.05), dmat);
+      handle.position.set(0, 0.78, -0.5);
+      g.add(handle);
+      const torso = new THREE.Mesh(new THREE.SphereGeometry(0.16, 7, 6), bmat);
+      torso.scale.set(1, 1.6, 0.8);
+      torso.position.set(0, 1.05, 0.15);
+      g.add(torso);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 7, 6), new THREE.MeshPhongMaterial({ color: 0xd9a06b }));
+      head.position.set(0, 1.4, 0.05);
+      g.add(head);
+      const legs = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 5), dmat);
+      legs.position.set(0, 0.55, 0.3);
+      legs.rotation.x = 0.4;
+      g.add(legs);
+      r = 0.7;
+    } else if (type === 3) {
+      // ट्रैक्टर — नया खेती वाला मॉडल: आगे हुड, पीछे बड़े पहिये, ऊपर छत
+      const hood = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.55, 1.3), bmat);
+      hood.position.set(0, 0.75, -0.85);
+      hood.castShadow = true;
+      g.add(hood);
+      const body2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 1.1), bmat);
+      body2.position.set(0, 1.05, 0.45);
+      g.add(body2);
+      const canopy = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 1.4), new THREE.MeshPhongMaterial({ color: 0xd8d8d8 }));
+      canopy.position.set(0, 2.1, 0.35);
+      g.add(canopy);
+      [-0.55, 0.55].forEach(function (x) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.0, 6), dmat);
+        post.position.set(x, 1.6, 0.85);
+        g.add(post);
+      });
+      const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 6), dmat);
+      exhaust.position.set(0.4, 1.6, -0.9);
+      g.add(exhaust);
+      const rwGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.55, 12);
+      rwGeo.rotateZ(Math.PI / 2);
+      [-0.95, 0.95].forEach(function (x) {
+        const rw = new THREE.Mesh(rwGeo, dmat);
+        rw.position.set(x, 0.85, 0.75);
+        g.add(rw);
+        tws.push(rw);
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.57, 10), new THREE.MeshPhongMaterial({ color: 0xf1c40f }));
+        rim.rotateZ(Math.PI / 2);
+        rim.position.set(x, 0.85, 0.75);
+        g.add(rim);
+      });
+      const fwGeo2 = new THREE.CylinderGeometry(0.42, 0.42, 0.4, 10);
+      fwGeo2.rotateZ(Math.PI / 2);
+      [-0.72, 0.72].forEach(function (x) {
+        const fw = new THREE.Mesh(fwGeo2, dmat);
+        fw.position.set(x, 0.42, -0.95);
+        g.add(fw);
+        tws.push(fw);
+      });
+      r = 1.4;
+    } else if (type === 4) {
+      // स्कूटर — छोटा दो-पहिया चालक के साथ
+      const swGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.09, 12);
+      swGeo.rotateZ(Math.PI / 2);
+      const sw = new THREE.Mesh(swGeo, dmat);
+      sw.position.set(0, 0.26, -0.6);
+      g.add(sw);
+      tws.push(sw);
+      const sw2 = new THREE.Mesh(swGeo, dmat);
+      sw2.position.set(0, 0.26, 0.6);
+      g.add(sw2);
+      tws.push(sw2);
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.9), bmat);
+      deck.position.set(0, 0.34, 0.1);
+      g.add(deck);
+      const shield = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.08), bmat);
+      shield.position.set(0, 0.65, -0.5);
+      shield.rotation.x = -0.25;
+      g.add(shield);
+      const seatS = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.12, 0.55), dmat);
+      seatS.position.set(0, 0.62, 0.3);
+      g.add(seatS);
+      const rider = new THREE.Mesh(new THREE.SphereGeometry(0.15, 7, 6), bmat);
+      rider.scale.set(1, 1.5, 0.8);
+      rider.position.set(0, 1.0, 0.25);
+      g.add(rider);
+      const headS = new THREE.Mesh(new THREE.SphereGeometry(0.1, 7, 6), new THREE.MeshPhongMaterial({ color: 0xd9a06b }));
+      headS.position.set(0, 1.35, 0.15);
+      g.add(headS);
+      r = 0.75;
+    } else if (type === 5) {
+      // पुलिस — सफेद गाड़ी + लाल-नीली चमकती लाइट
+      const tb = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.6, 4.0), new THREE.MeshPhongMaterial({ color: 0xf2f2f2, shininess: 90 }));
+      tb.position.y = 0.7;
+      tb.castShadow = true;
+      g.add(tb);
+      const tc = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 1.8), new THREE.MeshPhongMaterial({ color: 0x1c2630, shininess: 100 }));
+      tc.position.set(0, 1.25, 0.2);
+      g.add(tc);
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.04, 0.2, 4.04), new THREE.MeshPhongMaterial({ color: 0x1a3c8e }));
+      stripe.position.y = 0.62;
+      g.add(stripe);
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.3), dmat);
+      bar.position.set(0, 1.62, 0.2);
+      g.add(bar);
+      l1 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.24), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+      l1.position.set(-0.24, 1.76, 0.2);
+      g.add(l1);
+      l2 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.24), new THREE.MeshBasicMaterial({ color: 0x2233ff }));
+      l2.position.set(0.24, 1.76, 0.2);
+      g.add(l2);
+      const twGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.32, 10);
+      twGeo.rotateZ(Math.PI / 2);
+      [[-0.9, 1.3], [0.9, 1.3], [-0.9, -1.3], [0.9, -1.3]].forEach(function (w) {
+        const tw = new THREE.Mesh(twGeo, dmat);
+        tw.position.set(w[0], 0.4, w[1]);
+        g.add(tw);
+        tws.push(tw);
+      });
+      r = 1.2;
+    } else if (type === 6) {
+      // 🚌 बस — लंबी बॉडी, खिड़कियों की कतार, सफेद पट्टी
+      const bb = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.2, 8.5), bmat);
+      bb.position.set(0, 1.55, 0);
+      bb.castShadow = true;
+      g.add(bb);
+      const winMatB = new THREE.MeshPhongMaterial({ color: 0x223344, shininess: 120 });
+      for (let wi = 0; wi < 5; wi++) {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(2.54, 0.7, 1.1), winMatB);
+        win.position.set(0, 2.0, -2.8 + wi * 1.4);
+        g.add(win);
+      }
+      const wsh = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.85, 0.1), winMatB);
+      wsh.position.set(0, 1.95, -4.26);
+      g.add(wsh);
+      const stripeB = new THREE.Mesh(new THREE.BoxGeometry(2.54, 0.25, 8.54), new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 40 }));
+      stripeB.position.set(0, 1.35, 0);
+      g.add(stripeB);
+      [-0.85, 0.85].forEach(function (x) {
+        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.16, 0.08), new THREE.MeshBasicMaterial({ color: 0xfff2b0 }));
+        hl.position.set(x, 0.75, -4.28);
+        g.add(hl);
+        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.16, 0.08), new THREE.MeshBasicMaterial({ color: 0xff3020 }));
+        tl.position.set(x, 0.75, 4.28);
+        g.add(tl);
+      });
+      const busWGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 10);
+      busWGeo.rotateZ(Math.PI / 2);
+      [[-1.05, -2.6], [1.05, -2.6], [-1.05, 2.4], [1.05, 2.4]].forEach(function (w) {
+        const tw = new THREE.Mesh(busWGeo, dmat);
+        tw.position.set(w[0], 0.5, w[1]);
+        g.add(tw);
+        tws.push(tw);
+      });
+      r = 1.9;
+    }
+    scene.add(g);
+    return { g: g, wheels: tws, r: r, l1: l1, l2: l2, bmat: bmat };
+  }
+  const vehicleDefs = [
+    // 🚗🚌🚜 मिक्स्ड ट्रैफिक — हर लेवल में कार+ट्रक+डल्ला ट्रैक्टर+बस+स्कूटर+साइकिल सब चलें
+    [0, 0x2266cc], [1, 0x4a5568], [3, 0x935116], [6, 0xf39c12], [4, 0x8e44ad], [2, 0x1a5276],
+    [0, 0xf1c40f], [1, 0x6e4a1e], [3, 0x196f3d], [6, 0x8e44ad], [4, 0x117a65], [2, 0x117864],
+    [0, 0x27ae60], [1, 0x7f6006], [6, 0x2980b9], [2, 0x7d3c98], [4, 0xb9770e], [0, 0x8e44ad],
+    [0, 0xe67e22], [2, 0x935116], [0, 0x16a085], [0, 0xd35400], [0, 0x2c3e50], [0, 0x1abc9c],
+    [5, 0xffffff], [5, 0xf4f4f4], [5, 0xffe0b2]
+  ];
+  const CYCLE_OFF = ROAD_HALF + 1.5;   // 🚲 साइकिल लेन — रोड के किनारे
+  const VEH_NAMES = ['CAR', 'TRUCK', 'CYCLE', 'TRACTOR', 'SCOOTER', 'POLICE', 'BUS'];
+  for (let i = 0; i < vehicleDefs.length; i++) {
+    const d = vehicleDefs[i];
+    const c = makeVehicle(d[0], d[1]);
+    let speed, lane;
+    if (d[0] === 0) { speed = 20 + Math.random() * 12; lane = ((i % 4) - 1.5) * 4.5; }
+    else if (d[0] === 1) { speed = 13 + Math.random() * 4; lane = ((i % 2) - 0.5) * 5; }
+    else if (d[0] === 2) { speed = 8 + Math.random() * 3; lane = (i % 2 ? 1 : -1) * CYCLE_OFF; }
+    else if (d[0] === 4) { speed = 10 + Math.random() * 3; lane = (i % 2 ? 1 : -1) * CYCLE_OFF; }
+    else if (d[0] === 5) { speed = 16 + Math.random() * 4; lane = ((i % 2) - 0.5) * 4; }
+    else if (d[0] === 6) { speed = 14 + Math.random() * 4; lane = ((i % 2) - 0.5) * 5; }   // 🚌 बस रोड पर चले
+    else { speed = 10 + Math.random() * 4; lane = ((i % 3) - 1) * 6; }
+    trafficCars.push({
+      mesh: c.g, wheels: c.wheels, r: c.r, type: d[0], bmat: c.bmat,
+      l1: c.l1, l2: c.l2, vName: VEH_NAMES[d[0]],
+      rash: Math.random() < 0.35,   // कुछ ड्राइवर रेड लाइट तोड़ते हैं — पुलिस पकड़ेगी!
+      frozen: 0,
+      pi: (i + 0.5) * SEG / vehicleDefs.length,
+      speed: speed, baseSpeed: speed, lane: lane, active: true,
+      curSpeed: speed, braking: 0, brakeIn: 2 + Math.random() * 6,
+      fuelT: 25 + Math.random() * 40, want: Math.random() < 0.5 ? 'PETROL' : 'CNG'   // ⛽ ट्रैफिक का भी फ्यूल
+    });
+  }
+  // 🌈 बैलेंस — सिर्फ 3 ट्रैफिक गाड़ियों का रंग जादुई तरीके से बदलता रहेगा + चमकता अंडरग्लो (बाकी साधारण)
+  const rainbowCars = [];
+  (function pickRainbowCars() {
+    let assigned = 0;
+    for (let i = 0; i < trafficCars.length && assigned < 3; i++) {
+      const t = trafficCars[i];
+      if (t.type === 0) {
+        t.rainbow = true; t.hueOff = assigned * 0.33;
+        const glow = new THREE.Mesh(new THREE.CircleGeometry(1.7, 16),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 }));
+        glow.rotation.x = -Math.PI / 2; glow.position.y = 0.06;
+        t.mesh.add(glow);
+        t.glow = glow;
+        rainbowCars.push(t); assigned++;
+      }
+    }
+  })();
+
+  // 🏁 साथ रेस करने वाली 5 राइवल गाड़ियाँ — एक साथ निकलेंगी, जो पहले फिनिश पार करेगा वही 1st!
+  const ORD = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
+  const RIVAL_COLORS = [0xff3b3b, 0x3bff6e, 0x3bb5ff, 0xffe23b, 0xff5bd9];
+  const rivals = [];
+  RIVAL_COLORS.forEach(function (rc, k) {
+    const v = makeVehicle(0, rc);
+    scene.add(v.g);
+    rivals.push({ mesh: v.g, wheels: v.wheels, r: v.r, name: 'RIVAL ' + (k + 1),
+      lane: ((k % 3) - 1) * 3.5, prog: 0, base: 26 + Math.random() * 6, curSpeed: 0, fin: false,
+      rash: (k === 0 || k === 3), frozen: 0, cd: 0,
+      fuelT: 20 + Math.random() * 30
+    });   // 🏁 rivals.push बंद (यही ब्रेस गायब था — SyntaxError खत्म)
+  });
+  function placeRivals() {
+    rivals.forEach(function (r, k) {
+      r.prog = 2 - (k + 1) * 2.2;   // स्टार्ट लाइन के पीछे ग्रिड
+      r.curSpeed = 0; r.fin = false; r.frozen = 0; r.cd = 0; r.fuelT = 25 + Math.random() * 30;
+      const ii = ((Math.round(r.prog) % SEG) + SEG) % SEG;
+      const p = pts[ii], n = normals[ii];
+      r.mesh.position.set(p.x + n.x * r.lane, roadHeight(ii), p.z + n.z * r.lane);
+      r.mesh.rotation.y = Math.atan2(tangents[ii].x, tangents[ii].z) + Math.PI;
+    });
+  }
+  placeRivals();
+  // 🏁 राइवल चलाओ — रबर-बैंड रफ्तार से रेस हमेशा मज़ेदार रहे
+  function updateRivals(dt) {
+    const myProg = (state.lap - 1) * SEG + (state.prog - state.lapStartProg);
+    rivals.forEach(function (r) {
+      if (state.phase === 'race' || state.phase === 'finished') {
+        const gap = r.prog - myProg;
+        let want = r.base * (gap > 25 ? 0.86 : (gap < -25 ? 1.14 : 1.0));
+        if ((r.cd || 0) > 0) r.cd -= dt;
+        // ⛽ राइवल भी फ्यूल भरवाने जाते हैं — पंप के पास आते ही रुकेंगे
+        if ((r.fuelT || 20) <= 0 && r.frozen <= 0) {
+          for (let k = 0; k < fuelPumps.length; k++) {
+            const fp = fuelPumps[k];
+            const fdx = r.mesh.position.x - fp.x, fdz = r.mesh.position.z - fp.z;
+            if (fdx * fdx + fdz * fdz < 520) {
+              r.frozen = 3; r.curSpeed = 0; r.fuelT = 40 + Math.random() * 40;
+              if ((r.cd || 0) <= 0) { r.cd = 5; showLapMessage(r.name + ' REFUELLING — PETROL! ⛽'); }
+              break;
+            }
+          }
+        }
+        if (r.frozen > 0) { r.frozen -= dt; want = 0; }   // पुलिस ने रोक रखी
+        // 🚦 रेड/येलो पर राइवल गाड़ियाँ भी रुकें — लाइन के पीछे वाली रुकें, आगे निकल चुकी आगे बढ़े
+        for (let k = 0; k < signals.length; k++) {
+          const s = signals[k];
+          const d0 = ((s.pi - (((r.prog % SEG) + SEG) % SEG) + SEG * 2) % SEG) * sampleLen;
+          if (s.phase !== 'green' && d0 > 0.5 && d0 < 26) want = Math.min(want, Math.max(0, (d0 - 2) * 1.3));
+          // 🚨 रैश राइवल रेड तोड़े तो पुलिस उसे भी रोके — सिर्फ मैं नहीं!
+          if (r.rash && s.phase !== 'green' && d0 < 3.5 && r.curSpeed > 4 && r.frozen <= 0 && (r.cd || 0) <= 0) {
+            r.frozen = 2.5; r.cd = 6; r.curSpeed = 0;
+            showLapMessage('POLICE STOPPED ' + r.name + ' — RED LIGHT!');
+            thump();
+          }
+        }
+        // 🚗 आगे वाली राइवल के पीछे कतार — टक्कर न हो
+        for (let j = 0; j < rivals.length; j++) {
+          const o = rivals[j];
+          if (o === r) continue;
+          const dg = o.prog - r.prog;
+          if (dg > 0.1 && dg < 6.5 && Math.abs(o.lane - r.lane) < 2.4) want = Math.min(want, o.curSpeed * 0.8);
+        }
+        if (r.prog >= TOTAL_LAPS * SEG) { r.fin = true; want = 0; }   // फिनिश पार — आराम
+        r.curSpeed += (want - r.curSpeed) * Math.min(1, dt * (want < r.curSpeed ? 4.5 : 1.2));   // ब्रेक तेज़, रफ्तार धीरे
+        r.prog += (r.curSpeed / sampleLen) * dt;
+      }
+      const pp = ((r.prog % SEG) + SEG) % SEG;
+      const i0 = Math.floor(pp), i1 = (i0 + 1) % SEG;
+      const f = pp - i0;
+      const p = pts[i0].clone().lerp(pts[i1], f);
+      const n = normals[i0].clone().lerp(normals[i1], f).normalize();
+      const tg = tangents[i0].clone().lerp(tangents[i1], f).normalize();
+      p.addScaledVector(n, r.lane);
+      r.mesh.position.set(p.x, roadHeight(i0) * (1 - f) + roadHeight(i1) * f, p.z);
+      r.mesh.rotation.y = Math.atan2(tg.x, tg.z) + Math.PI;
+      const roll = (r.curSpeed * dt) / 0.4;
+      r.wheels.forEach(function (w) { w.rotation.x -= roll; });
+    });
+  }
+  // 🏆 मेरी अभी की जगह — कितनी गाड़ियाँ मुझसे आगे हैं
+  function playerRank() {
+    const myProg = (state.lap - 1) * SEG + (state.prog - state.lapStartProg);
+    let ahead = 0;
+    rivals.forEach(function (r) { if (r.prog > myProg) ahead++; });
+    return ahead + 1;
+  }
+
+  const sampleLen = trackLen / SEG;
+  // 🚗 शॉर्टकट और कनेक्टर रोड पर भी ट्रैफिक चले!
+  const pathTraffic = [];
+  shortcuts.forEach(function (sc, si) {
+    const types = sc.connector ? [0, 3] : [1, 0, 2];
+    const cols = [0xc0392b, 0x2471a3, 0x7d6608, 0x5b2c6f];
+    types.forEach(function (tp, k) {
+      const v = makeVehicle(tp, cols[(si + k) % 4]);
+      const s0 = sc.samples[0], s1 = sc.samples[1];
+      const step = Math.hypot(s1.x - s0.x, s1.z - s0.z) || 3;
+      pathTraffic.push({
+        mesh: v.g, wheels: v.wheels, r: v.r, sc: sc,
+        i: Math.random() * (sc.samples.length - 1),
+        dir: Math.random() < 0.5 ? 1 : -1,
+        speed: tp === 1 ? 9 : (tp === 3 ? 8 : (tp === 2 ? 7 : 13)),
+        step: step, active: true
+      });
+    });
+  });
+  function updatePathTraffic(dt) {
+    for (let i = 0; i < pathTraffic.length; i++) {
+      const t = pathTraffic[i];
+      if (!t.active) { t.mesh.visible = false; continue; }
+      t.mesh.visible = true;
+      const n = t.sc.samples.length - 1;
+      t.i += t.dir * t.speed * dt / t.step;
+      if (t.i >= n) { t.i = n; t.dir = -1; }
+      if (t.i <= 0) { t.i = 0; t.dir = 1; }
+      const i0 = Math.floor(t.i), i1 = Math.min(n, i0 + 1), f = t.i - i0;
+      const s0 = t.sc.samples[i0], s1 = t.sc.samples[i1];
+      t.mesh.position.set(s0.x + (s1.x - s0.x) * f, s0.h + (s1.h - s0.h) * f, s0.z + (s1.z - s0.z) * f);
+      const ang = Math.atan2(s1.x - s0.x, s1.z - s0.z);
+      t.mesh.rotation.y = ang + (t.dir > 0 ? Math.PI : 0);
+      const roll = (t.speed * dt) / 0.4;
+      t.wheels.forEach(function (w) { w.rotation.x -= roll * t.dir; });
+    }
+  }
+  let jamCd = 0;
+  function updateTraffic(dt) {
+    jamCd = Math.max(0, jamCd - dt);
+    for (let i = 0; i < trafficCars.length; i++) {
+      const t = trafficCars[i];
+      if (!t.active) { t.mesh.visible = false; continue; }
+      t.mesh.visible = true;
+
+      // 🚦 हर सिग्नल पढ़ो — रेड/येलो पर रुको (जाम बनेगा)। रैश ड्राइवर कभी नहीं रुकते!
+      let want = t.baseSpeed;
+      if (Math.abs(t.lane) < 4.5 && !t.rash) {
+        const iNow = Math.floor(t.pi);
+        for (let k = 0; k < signals.length; k++) {
+          const s = signals[k];
+          const d0 = ((iNow - s.pi + SEG) % SEG) * sampleLen;
+          if (d0 < 1 || d0 > 22) continue;
+          // 🚦 रेड और येलो दोनों पर रुकना है — ग्रीन पर ही जाना!
+          if (s.phase !== 'green') want = d0 < 3.5 ? 0 : Math.min(want, ((d0 - 3.5) / 18.5) * t.baseSpeed);
+        }
+      }
+      // ⛽ फ्यूल खत्म हो तो पंप के पास रुकेगी — पेट्रोल/CNG भरवाएगी
+      t.fuelT -= dt;
+      if (t.fuelT <= 0 && t.frozen <= 0) {
+        for (let k = 0; k < fuelPumps.length; k++) {
+          const fp = fuelPumps[k];
+          const fdx = t.mesh.position.x - fp.x, fdz = t.mesh.position.z - fp.z;
+          if (fdx * fdx + fdz * fdz < 144) {
+            t.frozen = 3.5; t.curSpeed = 0; t.fuelT = 45 + Math.random() * 45;
+            if (state.fineCd <= 0 && jamCd <= 0) { jamCd = 6; showLapMessage(t.vName + ' REFUELLING ' + t.want + '! ⛽'); }
+            break;
+          }
+        }
+      }
+      t.brakeIn -= dt;
+      if (t.brakeIn <= 0) { t.brakeIn = 4 + Math.random() * 7; t.braking = 0.9 + Math.random(); }
+      for (let j = 0; j < trafficCars.length; j++) {
+        if (j === i) continue;
+        const o = trafficCars[j];
+        if (!o.active) continue;
+        const dg = ((o.pi - t.pi + SEG * 2) % SEG) * sampleLen;
+        const dl = Math.abs(o.lane - t.lane);
+        if (dg > 0.1 && dg < 7 && dl < 2.2) want = Math.min(want, o.curSpeed * 0.8);
+      }
+      if (t.curSpeed < want) t.curSpeed = Math.min(want, t.curSpeed + 10 * dt);
+      else t.curSpeed = Math.max(want, t.curSpeed - 18 * dt);
+      if (Math.abs(t.lane) < 4.5 && t.curSpeed < 2 && t.baseSpeed > 5 && jamCd <= 0) {
+        jamCd = 8;
+        showLapMessage('TRAFFIC JAM! OVERTAKE!');
+      }
+
+      // 🚓 रैश ड्राइवर रेड/येलो पर से निकले — पुलिस ने उसी समय रोका + ₹ 10 चालान!
+      if (t.rash && state.fineCd <= 0 && t.frozen <= 0) {
+        for (let k = 0; k < signals.length; k++) {
+          const s = signals[k];
+          if (s.phase === 'green') continue;
+          const d0 = ((Math.floor(t.pi) - s.pi + SEG) % SEG) * sampleLen;
+          if (d0 < 3.5 && t.curSpeed > 4) {
+            t.frozen = 2;
+            t.curSpeed = 0;
+            state.fineCd = 2;
+            showLapMessage('POLICE STOPPED ' + t.vName + ' — ₹ 10!');
+            thump();
+            break;
+          }
+        }
+      }
+
+      // 🚓 पुलिस ने रोक रखी है तो गाड़ी फ्रीज़
+      if (t.frozen > 0) { t.frozen -= dt; t.curSpeed = 0; }
+      else { t.pi = (t.pi + (t.curSpeed / sampleLen) * dt) % SEG; }
+      const i0 = Math.floor(t.pi), i1 = (i0 + 1) % SEG;
+      const f = t.pi - i0;
+      const p = pts[i0].clone().lerp(pts[i1], f);
+      const n = normals[i0].clone().lerp(normals[i1], f).normalize();
+      const tg = tangents[i0].clone().lerp(tangents[i1], f).normalize();
+      p.addScaledVector(n, t.lane);
+      t.mesh.position.set(p.x, roadHeight(i0) * (1 - f) + roadHeight(i1) * f, p.z);
+      t.mesh.rotation.y = Math.atan2(tg.x, tg.z) + Math.PI;   // मॉडल का आगे वाला हिस्सा चलने की दिशा में
+      const roll = (t.curSpeed * dt) / 0.4;
+      t.wheels.forEach(function (w) { w.rotation.x -= roll; });
+      // 🚓 पुलिस की लाल-नीली चमक
+      if (t.l1) {
+        const ph = Math.floor(elapsedT * 6) % 2;
+        t.l1.material.color.setHex(ph ? 0xff2222 : 0x441111);
+        t.l2.material.color.setHex(ph ? 0x2233ff : 0x111144);
+      }
+    }
+  }
+
+  // ============================================================
+  //  🦌 रोड किनारे घूमते जंगली जानवर
+  // ============================================================
+  const animals = [];
+  function makeAnimal(type) {
+    const g = new THREE.Group();
+    let col, sc;
+    if (type === 0) { col = 0xb07a3e; sc = 0.9; }        // हिरण
+    else if (type === 1) { col = 0x8f8f88; sc = 1.8; }   // हाथी
+    else { col = 0x5f4433; sc = 0.8; }                   // जंगली सूअर
+    const mat = new THREE.MeshPhongMaterial({ color: col, shininess: 15 });
+    const darkMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(col).multiplyScalar(0.55), shininess: 10 });
+    const eyeM = new THREE.MeshBasicMaterial({ color: 0x14100c });
+    // शरीर — अंडाकार
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.62, 10, 8), mat);
+    body.scale.set(0.75, 0.72, 1.5);
+    body.position.y = 1.05;
+    body.castShadow = true;
+    g.add(body);
+    // गर्दन + सिर + थूथन
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.22, 0.7, 7), mat);
+    neck.position.set(0, 1.32, -0.8);
+    neck.rotation.x = 0.55;
+    g.add(neck);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 9, 7), mat);
+    head.scale.set(0.9, 0.85, 1.2);
+    head.position.set(0, 1.6, -1.12);
+    head.castShadow = true;
+    g.add(head);
+    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.28), darkMat);
+    snout.position.set(0, 1.54, -1.46);
+    g.add(snout);
+    // कान
+    [-0.2, 0.2].forEach(function (x) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), darkMat);
+      ear.scale.set(0.4, 1, 0.7);
+      ear.position.set(x, 1.72, -1.0);
+      g.add(ear);
+    });
+    // आँखें
+    [-0.15, 0.15].forEach(function (x) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 5), eyeM);
+      eye.position.set(x, 1.66, -1.32);
+      g.add(eye);
+    });
+    // टाँगें — ऊपरी + निचली + खुर
+    [[-0.26, -0.5], [0.26, -0.5], [-0.26, 0.5], [0.26, 0.5]].forEach(function (lp) {
+      const up = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.55, 6), mat);
+      up.position.set(lp[0], 0.68, lp[1]);
+      g.add(up);
+      const low = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.5, 6), darkMat);
+      low.position.set(lp[0], 0.25, lp[1]);
+      g.add(low);
+      const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.1, 6), darkMat);
+      hoof.position.set(lp[0], 0.05, lp[1]);
+      g.add(hoof);
+    });
+    // पूँछ
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.5, 5), darkMat);
+    tail.position.set(0, 1.15, 1.02);
+    tail.rotation.x = 0.85;
+    g.add(tail);
+    if (type === 0) {
+      // हिरण के शाखादार सींग
+      [-0.14, 0.14].forEach(function (x) {
+        const a1 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.55, 5), darkMat);
+        a1.position.set(x, 2.02, -1.05);
+        a1.rotation.x = -0.3;
+        g.add(a1);
+        const a2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.32, 5), darkMat);
+        a2.position.set(x + 0.09, 2.18, -0.96);
+        a2.rotation.z = 0.9;
+        g.add(a2);
+      });
+    }
+    if (type === 1) {
+      // हाथी — लटकता सूंड, बड़े कान, दाँत
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 1.1, 7), mat);
+      trunk.position.set(0, 1.25, -1.5);
+      trunk.rotation.x = 1.25;
+      g.add(trunk);
+      [-0.32, 0.32].forEach(function (x) {
+        const e = new THREE.Mesh(new THREE.SphereGeometry(0.28, 7, 6), darkMat);
+        e.scale.set(0.15, 1, 0.8);
+        e.position.set(x, 1.62, -0.95);
+        g.add(e);
+      });
+      [-0.14, 0.14].forEach(function (x) {
+        const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.42, 5), new THREE.MeshPhongMaterial({ color: 0xe8e0cc }));
+        tusk.rotation.x = 1.35;
+        tusk.position.set(x, 1.32, -1.5);
+        g.add(tusk);
+      });
+    }
+    if (type === 2) {
+      // सूअर के दाँत
+      [-0.12, 0.12].forEach(function (x) {
+        const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.22, 5), new THREE.MeshPhongMaterial({ color: 0xe8e0cc }));
+        tusk.rotation.x = 1.2;
+        tusk.position.set(x, 1.42, -1.4);
+        g.add(tusk);
+      });
+    }
+    g.scale.setScalar(sc);
+    scene.add(g);
+    return g;
+  }
+  for (let i = 0; i < 12; i++) {
+    const side = Math.random() < 0.5 ? 1 : -1;
+    animals.push({
+      mesh: makeAnimal(i % 3),
+      i: Math.floor(Math.random() * SEG),
+      off: side * (ROAD_HALF + 3 + Math.random() * 6),
+      dir: Math.random() < 0.5 ? 1 : -1,
+      speed: 1.5 + Math.random() * 1.5,
+      phase: Math.random() * 6
+    });
+  }
+  function updateAnimals(dt) {
+    for (let i = 0; i < animals.length; i++) {
+      const a = animals[i];
+      const ii = Math.floor(a.i);
+      // गाड़ी पास आए तो डरकर भागो
+      let off = a.off;
+      if (Math.hypot(car.position.x - pts[ii].x, car.position.z - pts[ii].z) < 10) {
+        off += a.off > 0 ? 5 : -5;
+      }
+      a.i = (a.i + a.dir * a.speed / sampleLen * dt + SEG) % SEG;
+      const j = Math.floor(a.i);
+      a.mesh.position.set(pts[j].x + normals[j].x * off, Math.abs(Math.sin(elapsedT * a.speed * 3 + a.phase)) * 0.08, pts[j].z + normals[j].z * off);
+      a.mesh.rotation.y = Math.atan2(tangents[j].x * a.dir, tangents[j].z * a.dir);
+    }
+  }
+
+  // ============================================================
+  //  🚦 ट्रैफिक सिग्नल — हर मोड़ पर सिग्नल + पुलिस चौकी
+  // ============================================================
+  const signals = [];
+  const policePosts = [];
+  function addSignal(f0) {
+    const hi = Math.floor(f0 * SEG) % SEG;
+    const p = pts[hi], n = normals[hi];
+    for (let k = 0; k < signals.length; k++) {
+      const sp = pts[signals[k].pi];
+      if (Math.hypot(sp.x - p.x, sp.z - p.z) < 45) return null;
+    }
+    const g2 = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 7, 8), new THREE.MeshLambertMaterial({ color: 0x333333 }));
+    pole.position.y = 3.5;
+    g2.add(pole);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.6, 0.5), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+    box.position.y = 6.6;
+    g2.add(box);
+    // दोनों तरफ़ दिखने वाली बड़ी बत्तियाँ
+    const mkL = function (y) {
+      const pair = [];
+      [0.32, -0.32].forEach(function (zo) {
+        const l = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 10), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+        l.position.set(0, y, zo);
+        g2.add(l);
+        pair.push(l);
+      });
+      return pair;
+    };
+    const lr = mkL(7.4), ly = mkL(6.6), lg = mkL(5.8);
+    g2.position.set(p.x + n.x * (ROAD_HALF + 4.2), 0, p.z + n.z * (ROAD_HALF + 4.2));
+    g2.rotation.y = Math.atan2(n.x, n.z);
+    scene.add(g2);
+    signals.push({ pi: hi, lr: lr, ly: ly, lg: lg, phase: signals.length % 2 === 0 ? 'red' : 'green', t: 0 });
+    // 🚓 हर सिग्नल पर पुलिस गाड़ी — लाल/पीले पर सब वाहन रोकती है
+    const ppS = makeVehicle(5, 0xffffff);
+    ppS.g.position.set(p.x + n.x * (ROAD_HALF + 2.6), 0.02, p.z + n.z * (ROAD_HALF + 2.6));
+    ppS.g.rotation.y = Math.atan2(n.x, n.z);
+    scene.add(ppS.g);
+    policePosts.push({ l1: ppS.l1, l2: ppS.l2, x: ppS.g.position.x, z: ppS.g.position.z, g: ppS.g });
+  }
+  // 🚓 पुलिस फोर्स — हर फोर्स में 2-4 गाड़ियों का घेराव, चमकती लाइट
+  function addPoliceForce(f0, count) {
+    const hi = Math.floor(f0 * SEG) % SEG;
+    const p = pts[hi], n = normals[hi], tg = tangents[hi];
+    for (let k = 0; k < policePosts.length; k++) {
+      if (Math.hypot(policePosts[k].x - p.x, policePosts[k].z - p.z) < 80) return null;
+    }
+    for (let c = 0; c < count; c++) {
+      const pp = makeVehicle(5, 0xffffff);
+      const off = ROAD_HALF + 3 + (c % 2) * 2.5;      // सड़क किनारे नाका
+      const along = (c - (count - 1) / 2) * 3.2;      // हल्का आगे-पीछे फैला
+      pp.g.position.set(p.x + n.x * off + tg.x * along, 0.02, p.z + n.z * off + tg.z * along);
+      pp.g.rotation.y = Math.atan2(tg.x, tg.z) + Math.PI / 2;   // रोड के आर-पार खड़ा नाका
+      scene.add(pp.g);
+      treeObstacles.push({ x: pp.g.position.x, z: pp.g.position.z, r: 1.5 });
+      policePosts.push({ l1: pp.l1, l2: pp.l2, x: pp.g.position.x, z: pp.g.position.z, g: pp.g });
+    }
+  }
+  // 🚓 पहले 5 पुलिस फोर्स — सबसे ज़्यादा मुड़े मोड़ों पर!
+  const curv = [];
+  for (let i = 0; i < SEG; i++) {
+    const a0 = tangents[(i - 5 + SEG) % SEG], a1 = tangents[(i + 5) % SEG];
+    curv[i] = Math.abs(a0.x * a1.z - a0.z * a1.x);
+  }
+  const idxs = [];
+  for (let i = 0; i < SEG; i++) idxs.push(i);
+  idxs.sort(function (a, b) { return curv[b] - curv[a]; });
+  const forceSpots = [];
+  for (let k = 0; k < idxs.length && forceSpots.length < 5; k++) {
+    const i = idxs[k];
+    if (curv[i] < 0.06) break;
+    const ok = forceSpots.every(function (s) {
+      const d = Math.abs(i - s);
+      return Math.min(d, SEG - d) > 60;   // फोर्स आपस में दूर-दूर
+    });
+    if (ok) forceSpots.push(i);
+  }
+  forceSpots.forEach(function (i, fi) {
+    addPoliceForce(i / SEG, 2 + (fi % 2));               // हर फोर्स में 2-3 गाड़ियाँ
+  });
+  // 🚦 फिर सिग्नल — हर सिग्नल पर पुलिस गाड़ी भी (सब वाहन रोकती है)
+  [0.16, 0.41, 0.66, 0.91].forEach(function (f0) { addSignal(f0); });
+  forceSpots.forEach(function (i) { addSignal(i / SEG); });
+
+  // ============================================================
+  //  🏗️ रोड किनारे — बालू के ढेर, ट्रैक्टर-ट्रॉली, गाँव की झोपड़ियाँ
+  // ============================================================
+  const sandMat = new THREE.MeshLambertMaterial({ color: 0xd8b56a });
+  const tyreMat = new THREE.MeshLambertMaterial({ color: 0x14181d });
+  [0.12, 0.37, 0.62, 0.87].forEach(function (f0) {
+    const hi = Math.floor(f0 * SEG);
+    const p = pts[hi], n = normals[hi], t = tangents[hi];
+    const side = (f0 * 10) % 2 < 1 ? 1 : -1;
+  });
+
+  // ============================================================
+  //  🛶 नदी में तैरती नावें और बत्तखें
+  // ============================================================
+  const floaters = [];
+  const boatMat = new THREE.MeshLambertMaterial({ color: 0x8a5a30 });
+  const duckMat = new THREE.MeshLambertMaterial({ color: 0xf7e26b });
+  const beakMat = new THREE.MeshLambertMaterial({ color: 0xe67e22 });
+  for (let i = 0; i < 14; i++) {
+    const g = new THREE.Group();
+    if (i % 2 === 0) {
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 3.4), boatMat);
+      hull.position.y = 0.25;
+      g.add(hull);
+      const bench = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 0.4), boatMat);
+      bench.position.y = 0.55;
+      g.add(bench);
+    } else {
+      const bodyD = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), duckMat);
+      bodyD.scale.set(1, 0.75, 1.3);
+      bodyD.position.y = 0.28;
+      g.add(bodyD);
+      const headD = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 8), duckMat);
+      headD.position.set(0, 0.58, -0.32);
+      g.add(headD);
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 5), beakMat);
+      beak.rotation.x = -Math.PI / 2;
+      beak.position.set(0, 0.56, -0.55);
+      g.add(beak);
+    }
+    scene.add(g);
+    floaters.push({
+      g: g, dir: i % 2 === 0 ? 1 : -1,
+      a: (i / 14) * Math.PI * 2,
+      lane: (Math.random() - 0.5) * 5,
+      speed: 1.5 + Math.random() * 2,
+      phase: Math.random() * 6
+    });
+  }
+  function updateFloaters(dt) {
+    for (let i = 0; i < floaters.length; i++) {
+      const f = floaters[i];
+      f.a += f.dir * f.speed * dt / R_RIVER;
+      const rr = R_RIVER + f.lane;
+      f.g.position.set(Math.cos(f.a) * rr, 0.12 + Math.sin(elapsedT * 2 + f.phase) * 0.05, Math.sin(f.a) * rr);
+      f.g.rotation.y = -f.a + (f.dir < 0 ? Math.PI : 0) + Math.PI / 2;
+    }
+  }
+
+  // ============================================================
+  //  💧 वाटर जेट की फुहार कण
+  // ============================================================
+  const JET_N = 34;
+  const jetPool = [];
+  const jetGeo = new THREE.SphereGeometry(0.22, 6, 6);
+  for (let i = 0; i < JET_N; i++) {
+    const m = new THREE.Mesh(jetGeo, new THREE.MeshBasicMaterial({ color: 0x7ec8ff, transparent: true, opacity: 0 }));
+    m.visible = false;
+    scene.add(m);
+    jetPool.push({ mesh: m, life: 0, vx: 0, vy: 0, vz: 0 });
+  }
+  let jetIdx = 0, jetTimer = 0;
+
+  // ============================================================
+  //  गेम स्टेट
+  // ============================================================
+  const TOTAL_LAPS = 3;
+  // 🎚️ 5 लेवल — हर लेवल में ट्रैफिक/ट्रेन ज़्यादा और तेज़
+  const LEVELS = [
+    { name: 'EASY',      traffic: 6,  trafficSpd: 0.55, pathT: 2,  trains: 1, trainSpd: 0.65 },
+    { name: 'NORMAL',    traffic: 9,  trafficSpd: 0.75, pathT: 4,  trains: 2, trainSpd: 0.8 },
+    { name: 'HARD',      traffic: 13, trafficSpd: 0.95, pathT: 7,  trains: 3, trainSpd: 0.95 },
+    { name: 'VERY HARD', traffic: 16, trafficSpd: 1.1,  pathT: 10, trains: 4, trainSpd: 1.1 },
+    { name: 'INSANE',    traffic: 20, trafficSpd: 1.3,  pathT: 13, trains: 5, trainSpd: 1.25 }
+  ];
+  let curLevel = 1;
+  let unlocked = parseInt(localStorage.getItem('jungleUnlocked') || '1') || 1;
+  const state = {
+    phase: 'menu',          // menu | countdown | race | finished
+    fuel: 100,              // ⛽ पेट्रोल/CNG टैंक (0-100)
+    heading: 0,
+    speed: 0,
+    prog: 0,                // ट्रैक पर तय कुल सैंपल-इंडेक्स दूरी
+    lastIdx: 0,
+    halfPassed: false,
+    lapStartProg: 0,
+    lap: 1,
+    raceTime: 0,
+    lapTime: 0,
+    bestLap: parseFloat(localStorage.getItem('jungleBestLap') || '0') || null,
+    wrongTimer: 0,
+    offroad: false,
+    mode: 'road',           // road | rail | boat
+    trainHitCd: 0,
+    waterJet: false,
+    jetT: 0,
+    flight: false,
+    alt: 0,
+    vy: 0,
+    steer: 0,
+    boatLane: 0,
+    boatAngle: 0,
+    railAngle: 0,
+    railLane: 0,
+    boostT: 0,
+    groundY: 0
+  };
+
+  function placeCarAtStart() {
+    const p = pts[2], t = tangents[2];
+    car.position.set(p.x, 0, p.z);
+    state.heading = Math.atan2(t.x, t.z);
+    state.speed = 0;
+    state.prog = 2; state.lastIdx = 2;
+    state.halfPassed = false;
+    state.lapStartProg = 2;
+    state.flight = false; state.alt = 0; state.vy = 0; state.steer = 0; state.groundY = 0;
+    state.fuel = 100;   // ⛽ नई रेस — फुल टैंक
+    state.waterJet = false; state.jetT = 0; state.trainHitCd = 0; state.fineCd = 0;
+    state.mode = 'road';
+    state.boatAngle = 0; state.boatLane = 0; state.railAngle = 0; state.railLane = 0;
+    state.autoPath = null;
+    state.sinkT = 0; state.sinking = false;
+    // 🔁 अगले लेवल पर पैसे साथ चलते रहेंगे; स्टार्ट-स्क्रीन से फिर शुरू करो तो ही ज़ीरो
+    if (!chainMoney) { money = 0; coins.forEach(function (c) { c.got = false; c.mesh.visible = true; }); }
+    chainMoney = false;
+    state.chase = null;
+    boatParts.visible = false;
+    car.rotation.x = 0; car.rotation.z = 0;
+    updateCarTransform(0);
+  }
+
+  function updateCarTransform(dt) {
+    // मॉडल का आगे वाला हिस्सा चलने की दिशा में रहे (+π से सही मुँह)
+    car.rotation.y = state.heading + Math.PI;
+    // पहिये घुमाओ
+    const roll = state.speed * dt / 0.42;
+    wheels.forEach(function (w, i) { w.rotation.x -= roll; });
+    // उड़ान में झुकाव (पिच) और मोड़ पर बैंक
+    const airborne = state.flight || state.alt > 0.05;
+    const pitch = airborne ? THREE.MathUtils.clamp(-state.vy * 0.035, -0.32, 0.32) : 0;
+    const bank = state.flight ? state.steer * 0.3 : 0;
+    const k = Math.min(1, dt * 5);
+    car.rotation.x += (pitch - car.rotation.x) * k;
+    car.rotation.z += (bank - car.rotation.z) * k;
+  }
+
+  // ============================================================
+  //  इनपुट
+  // ============================================================
+  const keys = {};
+  window.addEventListener('keydown', function (e) {
+    keys[e.code] = true;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].indexOf(e.code) >= 0) e.preventDefault();
+    if (e.code === 'KeyM') toggleMute();
+    if (e.code === 'Space') toggleFlight();
+    if (e.code === 'KeyF') toggleWaterJet();
+    if (e.code === 'Digit1') setMode('road');
+    if (e.code === 'Digit2') setMode('rail');
+    if (e.code === 'Digit3') setMode('boat');
+    if (e.code === 'KeyR' && state.phase === 'race') { placeCarAtStart(); }
+    if (e.code === 'KeyV') toggleBike();   // 🏍️ बाइक ↔ कार स्विच
+    initAudio();
+  });
+  window.addEventListener('keyup', function (e) { keys[e.code] = false; });
+
+  // टच कंट्रोल
+  const isTouch = ('ontouchstart' in window);
+  if (isTouch) document.getElementById('touch-controls').style.display = 'block';
+  function bindTouch(id, code) {
+    const el = document.getElementById(id);
+    const up = function () { keys[code] = false; };
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); keys[code] = true; initAudio();
+      if (el.setPointerCapture && e.pointerId !== undefined) { try { el.setPointerCapture(e.pointerId); } catch (err) {} }
+    });
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('lostpointercapture', up);   // उंगली खिसके तो भी ब्रेक पक्का काम करे
+    el.addEventListener('mouseup', up);
+  }
+  bindTouch('btn-left', 'ArrowLeft');
+  bindTouch('btn-right', 'ArrowRight');
+  bindTouch('btn-fwd', 'ArrowUp');
+  bindTouch('btn-back', 'ArrowDown');
+  bindTouch('pedal-brake', 'KeyB');   // 🛑 ब्रेक बटन — दबाए रहो तो गाड़ी रुकी रहेगी
+  document.getElementById('btn-fly').addEventListener('pointerdown', function (e) { e.preventDefault(); toggleFlight(); });
+  document.getElementById('btn-jet').addEventListener('pointerdown', function (e) { e.preventDefault(); toggleWaterJet(); });
+  document.getElementById('mode-road').addEventListener('click', function () { setMode('road'); });
+  document.getElementById('mode-rail').addEventListener('click', function () { setMode('rail'); });
+  document.getElementById('mode-boat').addEventListener('click', function () { setMode('boat'); });
+  document.getElementById('mode-fly').addEventListener('click', function () { toggleFlight(); });
+
+  // ============================================================
+  //  साउंड (WebAudio इंजन)
+  // ============================================================
+  let audioCtx = null, engineOsc = null, engineGain = null, muted = false, noiseBuf = null;
+  function initAudio() {
+    if (audioCtx || muted) return;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      engineOsc = audioCtx.createOscillator();
+      engineOsc.type = 'sawtooth';
+      engineGain = audioCtx.createGain();
+      engineGain.gain.value = 0;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 1200;   // साफ़ और क्रिस्प आवाज़
+      engineOsc.connect(filter);
+      filter.connect(engineGain);
+      engineGain.connect(audioCtx.destination);
+      engineOsc.start();
+      // स्टीम इंजन के लिए नॉइज़ बफर
+      const nLen = audioCtx.sampleRate * 0.4;
+      noiseBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+      const nData = noiseBuf.getChannelData(0);
+      for (let i = 0; i < nLen; i++) nData[i] = Math.random() * 2 - 1;
+    } catch (err) { /* ऑडियो नहीं चला तो कोई बात नहीं */ }
+  }
+  function toggleMute() {
+    muted = !muted;
+    document.getElementById('mute-btn').textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+    if (muted && engineGain) engineGain.gain.value = 0;
+  }
+  document.getElementById('mute-btn').addEventListener('click', toggleMute);
+
+  // 🎵 हल्का गाना — इंजन की आवाज़ की जगह (कम आवाज़ में)
+  let musicStep = 0;
+  const MELODY = [392, 494, 587, 784, 659, 587, 494, 392, 440, 554, 659, 880, 784, 659, 587, 494];   // 🎵 दूसरा गाना
+  setInterval(function () {
+    if (!audioCtx || muted) return;
+    const t = audioCtx.currentTime + 0.02;
+    const note = MELODY[musicStep % MELODY.length];
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'triangle';
+    o.frequency.value = note;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.075, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.48);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + 0.5);
+    if (musicStep % 4 === 0) {   // धीमा बास
+      const o2 = audioCtx.createOscillator(), g2 = audioCtx.createGain();
+      o2.type = 'sine';
+      o2.frequency.value = note / 4;
+      g2.gain.setValueAtTime(0.0001, t);
+      g2.gain.linearRampToValueAtTime(0.08, t + 0.08);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+      o2.connect(g2); g2.connect(audioCtx.destination);
+      o2.start(t); o2.stop(t + 0.5);
+    }
+    musicStep++;
+  }, 320);   // 🎵 तेज़ गति
+
+  // 🚂 स्टीम इंजन की आवाज़ें
+  function playChuff(vol) {
+    if (!audioCtx || muted || !noiseBuf) return;
+    const src = audioCtx.createBufferSource();
+    src.buffer = noiseBuf;
+    const f = audioCtx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 520;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.28 * vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.28);
+    src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+    src.start();
+  }
+  function playWhistle(vol) {
+    if (!audioCtx || muted) return;
+    const t = audioCtx.currentTime;
+    [520, 660].forEach(function (fr) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(fr, t);
+      o.frequency.linearRampToValueAtTime(fr * 0.92, t + 0.9);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.09 * vol, t + 0.08);
+      g.gain.setValueAtTime(0.09 * vol, t + 0.55);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.95);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t); o.stop(t + 1);
+    });
+  }
+
+  // ============================================================
+  //  फिजिक्स + गेम लॉजिक
+  // ============================================================
+  const MAX_SPEED = 42, AUTO_SPEED = 30, REV_SPEED = 12, ACCEL = 16, BRAKE = 34, FRICTION = 10, OFFROAD_DRAG = 26;
+
+  function nearestTrackIdx(x, z) {
+    let min = Infinity, best = 0;
+    for (let i = 0; i < SEG; i++) {
+      const dx = pts[i].x - x, dz = pts[i].z - z;
+      const d = dx * dx + dz * dz;
+      if (d < min) { min = d; best = i; }
+    }
+    return best;
+  }
+
+  function physics(dt) {
+    const back = (keys['KeyS'] || keys['ArrowDown']) ? 1 : 0;
+    const brakePure = keys['KeyB'] ? 1 : 0;   // 🛑 ब्रेक बटन — सिर्फ रुकना, रिवर्स नहीं
+    const left = (keys['KeyA'] || keys['ArrowLeft']) ? 1 : 0;
+    const right = (keys['KeyD'] || keys['ArrowRight']) ? 1 : 0;
+
+    // ऑफरोड चेक
+    const idx = nearestTrackIdx(car.position.x, car.position.z);
+    const dx = pts[idx].x - car.position.x, dz = pts[idx].z - car.position.z;
+    const distRoad = Math.sqrt(dx * dx + dz * dz);
+    // 🛣️ शॉर्टकट चेक — छोटे रास्ते पर भी पूरी रफ्तार!
+    let onShort = -1, shortI = 0, shortF = 0;
+    for (let s = 0; s < shortcuts.length; s++) {
+      const sms = shortcuts[s].samples;
+      let bestD2 = Infinity;
+      for (let i = 0; i < sms.length; i++) {
+        const ddx = car.position.x - sms[i].x, ddz = car.position.z - sms[i].z;
+        const d2 = ddx * ddx + ddz * ddz;
+        if (d2 < bestD2) { bestD2 = d2; shortI = i; }
+      }
+      if (bestD2 < (shortcuts[s].half + 0.8) * (shortcuts[s].half + 0.8)) {
+        onShort = s;
+        shortI = Math.min(shortI, sms.length - 1);
+        shortF = shortI / (sms.length - 1);
+        break;
+      }
+    }
+    state.offroad = distRoad > ROAD_HALF + 2.6 && onShort < 0;   // साइकिल लेन भी रोड ही है
+
+    // 🎁 गिफ्ट-बूस्ट चालू है तो स्पीड कैप बढ़ा
+    const cap = (state.boostT || 0) > 0 ? 58 : MAX_SPEED;
+    // स्पीड अड्डा — गाड़ी खुद-ब-खुद चलती है (उड़ान में थोड़ी तेज़)
+    const cruise = state.flight ? 34 : (state.mode === 'rail' ? 36 : AUTO_SPEED);
+    // 🛑 ब्रेक बटन — जब तक दबाए रहो गाड़ी रुकी रहेगी (रेड लाइट पर रुको, फाइन से बचो!)
+    if (brakePure && !state.flight) {
+      state.speed = (state.speed > 0.2) ? Math.max(0, state.speed - BRAKE * dt) : 0;
+    } else if (back && !state.flight) state.speed -= (state.speed > 0 ? BRAKE : ACCEL * 0.6) * dt;
+    else if (state.speed < cruise) {
+      state.speed = Math.min(cruise, state.speed + ACCEL * dt);
+    } else {
+      // ज़मीन पर W/↑ = बूस्ट; उड़ान में W/↑ = ऊपर (नीचे वाले ब्लॉक में)
+      const boost = (!state.flight && (keys['KeyW'] || keys['ArrowUp'])) ? ACCEL * 0.5 : -FRICTION * 0.6;
+      state.speed = Math.min(cap, Math.max(cruise, state.speed + boost * dt));
+    }
+    const onRailway = state.mode === 'rail' || distToRail(car.position.x, car.position.z) < 3.4;
+    // inRiver = असली पानी की सतह पर हो (ब्रिज के ऊपर से जाते वक़्त नाव न बने!)
+    const inRiver = distToRiver(car.position.x, car.position.z) < 8 && car.position.y < 1;
+    // 🚂 रेलवे की पटरी पर तेज़ी से चल सकते हो — घास पर ही धीमे (🛶 नाव पानी पर आज़ाद!)
+    if (state.offroad && !state.flight && !onRailway && !(state.mode === 'boat' && inRiver) && !state.autoPath) {
+      state.speed -= Math.sign(state.speed) * OFFROAD_DRAG * dt;
+      if (Math.abs(state.speed) > 16) state.speed = Math.sign(state.speed) * 16;
+    }
+    // 🛶 नाव मोड की रफ्तार सीमा — पानी पर तेज़, किनारे पर धीमी
+    if (state.mode === 'boat') {
+      const bcap = inRiver ? 24 : 7;
+      if (Math.abs(state.speed) > bcap) state.speed = Math.sign(state.speed) * bcap;
+      // किनारे पहुँचे तो अपने-आप फिर गाड़ी बन जाए
+      if (!inRiver && !state.flight && !state.waterJet &&
+          distToRiver(car.position.x, car.position.z) > 8) {
+        setMode('road', true);
+      }
+    }
+    // 🌊 पानी में गिरी — तैरती नहीं, डूबने लगती है, फिर नाव बन जाती है!
+    state.sinking = inRiver && state.mode === 'road' && !state.flight && !state.waterJet &&
+        state.alt < 0.5 && state.groundY < 1 &&
+        (onShort < 0 || shortcuts[onShort].connector);
+    if (state.sinking) {
+      state.sinkT = (state.sinkT || 0) + dt;
+      if (state.sinkT > 0.35) { state.sinkT = 0; state.sinking = false; setMode('boat', true); }
+    } else if (state.mode === 'road') {
+      state.sinkT = 0;
+    }
+    // ⛽ फ्यूल — पेट्रोल/CNG खत्म हो तो गाड़ी धीमी चले (पंप पर रुककर भरवाओ)
+    state.fuel = Math.max(0, (state.fuel || 100) - dt * (0.2 + Math.abs(state.speed) * 0.008));
+    if ((state.fuel || 100) <= 0 && Math.abs(state.speed) > 6) state.speed = Math.sign(state.speed) * 6;
+    state.speed = Math.max(-REV_SPEED, Math.min(cap, state.speed));
+
+    // 🪽 उड़ान / 💧 वाटर जेट की ऊँचाई — W/↑ ऊपर, S/↓ नीचे
+    if (state.flight) {
+      let targetAlt = 8;
+      if (keys['KeyW'] || keys['ArrowUp']) targetAlt = 13;
+      if (back || brakePure) targetAlt = 3;
+      state.vy = (targetAlt - state.alt) * 2.2;
+    } else if (state.waterJet) {
+      state.jetT -= dt;
+      if (state.jetT <= 0) {
+        state.waterJet = false;
+        showLapMessage('WATER JET OFF!');
+      }
+      let targetAlt = 5.5;
+      if (keys['KeyW'] || keys['ArrowUp']) targetAlt = 9;
+      if (back) targetAlt = 2;
+      state.vy = (targetAlt - state.alt) * 2.2;
+    } else if (state.alt > 0) {
+      state.vy -= 22 * dt;
+    }
+    if (state.alt > 0 || state.flight || state.waterJet) {
+      state.alt = Math.max(0, state.alt + state.vy * dt);
+      if (state.alt <= 0 && !state.waterJet) { state.alt = 0; state.vy = 0; state.flight = false; }
+    }
+
+    // स्टीयरिंग
+    const steer = (right ? 1 : 0) - (left ? 1 : 0);
+    state.steer = steer;
+    if (state.autoPath) {
+      // 🛣️ ऑटो-ड्राइव — कनेक्टर रोड से पटरी/नदी तक खुद चलो
+      const ap = state.autoPath;
+      const tI = Math.min(ap.i + 1, ap.pts.length - 1);
+      const target = ap.pts[tI];
+      const ddx = target.x - car.position.x, ddz = target.z - car.position.z;
+      const dd = Math.hypot(ddx, ddz);
+      const tAng = Math.atan2(ddx, ddz);
+      let dh = tAng - state.heading;
+      while (dh > Math.PI) dh -= Math.PI * 2;
+      while (dh < -Math.PI) dh += Math.PI * 2;
+      state.heading += dh * Math.min(1, dt * 3.5);
+      if (dd < 6 && ap.i < ap.pts.length - 1) ap.i++;
+      if (ap.i >= ap.pts.length - 1 && dd < 6) {
+        const then = ap.then;
+        state.autoPath = null;
+        if (then === 'rail') setMode('rail');
+      }
+    } else if (state.mode === 'rail' && !state.flight) {
+      // 🚂 रेल मोड — गोल पटरी पर घूमते रहो, A/D से तीनों पटरियों पर जाओ, S से असली पीछे
+      if (steer !== 0 && Math.abs(state.speed) > 1) state.railLane = Math.max(-7, Math.min(7, state.railLane + steer * 6 * dt));
+      state.railAngle += (state.speed / R_RAIL) * dt;
+      const rr = R_RAIL + state.railLane;
+      car.position.x = Math.cos(state.railAngle) * rr;
+      car.position.z = Math.sin(state.railAngle) * rr;
+      state.heading = -state.railAngle;
+    } else if (state.mode === 'boat' && inRiver && state.alt === 0 && !state.waterJet) {
+      // 🛶 नाव गोल नदी की धारा में बहती है — A/D से किनारे बदलो, S से असली पीछे
+      if (steer !== 0) state.boatLane = Math.max(-5, Math.min(5, state.boatLane + steer * 4 * dt));
+      state.boatAngle += (state.speed / R_RIVER) * dt;
+      const rr = R_RIVER + state.boatLane;
+      car.position.x = Math.cos(state.boatAngle) * rr;
+      car.position.z = Math.sin(state.boatAngle) * rr;
+      state.heading = -state.boatAngle;
+    } else if (steer !== 0 && Math.abs(state.speed) > 0.5) {
+      const grip = Math.min(1, Math.abs(state.speed) / 6);   // धीमी स्पीड पर भी पक्का मोड़
+      const dir = state.speed >= 0 ? 1 : -1;
+      state.heading -= steer * 2.1 * grip * dir * dt;   // तेज़ मोड़ — बैक करके घुमाना न पड़े
+    }
+
+    // आगे बढ़ो (रेल/नाव अपने गोल लूप पर अलग से चलते हैं — लेकिन उड़ते वक़्त आज़ाद!)
+    const fx = Math.sin(state.heading), fz = Math.cos(state.heading);
+    const polarMode = (state.mode === 'rail' && !state.flight) || (state.mode === 'boat' && inRiver && state.alt === 0 && !state.waterJet);
+    if (!polarMode) {
+      car.position.x += fx * state.speed * dt;
+      car.position.z += fz * state.speed * dt;
+    }
+    // रोड/ट्रेन-छत की ऊँचाई के हिसाब से गाड़ी (ब्रिज भी ऊपर उठता है)
+    let groundTarget = (distRoad < ROAD_HALF + 2.6 && !(state.mode === 'boat' && inRiver)) ? roadHeight(idx) : 0;
+    if (onShort >= 0) {
+      groundTarget = shortcuts[onShort].connector
+        ? connectorH(car.position.x, car.position.z, shortcuts[onShort].rail)   // कनेक्टर की अपनी ऊँचाई
+        : 0.04 + shortcutH(car.position.x, car.position.z);                     // शॉर्टकट ब्रिज की सटीक ऊँचाई
+    }
+    const onRails = state.mode === 'rail';
+    if (onRails) groundTarget = 0.42;   // 🚂 पटरी की ऊँचाई
+    // 🚂 चलती ट्रेन की छत पर सवारी — अपनी पटरी वाली ट्रेन पर!
+    let cAng = Math.atan2(car.position.z, car.position.x);
+    const carRad = Math.hypot(car.position.x, car.position.z) - R_RAIL;
+    let roofTrain = null;
+    trains.forEach(function (t) {
+      if (!t.active) return;
+      let d = cAng - t.angle;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      if (d > 0.005 && d < t.rideLen && Math.abs(carRad - t.trackOff) < 3) roofTrain = t;
+    });
+    const onTrainRoof = !state.flight && state.mode !== 'rail' && !state.autoPath &&
+      roofTrain && distToRail(car.position.x, car.position.z) < 4 + Math.abs(roofTrain.trackOff);
+    if (onTrainRoof) groundTarget = 3.25;   // 🚂 ट्रेन की छत
+    // 🛶 नाव पानी की सतह पर तैरती है — थोड़ी उछल-कूद के साथ
+    if (state.mode === 'boat' && inRiver && state.alt === 0 && !state.waterJet) {
+      car.position.y = 0.12 + Math.sin(elapsedT * 3) * 0.06;
+    }
+    state.groundY += (groundTarget - state.groundY) * Math.min(1, dt * 8);
+    if (state.groundY > 3 && groundTarget === 0 && state.alt === 0) {
+      // ब्रिज/ट्रेन के किनारे से नीचे गिरो
+      state.alt = state.groundY; state.groundY = 0; state.vy = 0;
+    }
+    car.position.y = state.groundY + state.alt;
+    // 🌊 पानी पर तैरना मना — डूबने लगती है
+    if (state.sinking) {
+      car.position.y -= Math.min(0.35, state.sinkT * 0.9);
+      state.speed *= (1 - Math.min(1, 2.5 * dt));
+    }
+    if (onTrainRoof && state.alt === 0) {
+      // ट्रेन के साथ उसकी पटरी पर बहो
+      state.railAngle = cAng + (roofTrain.speed / R_RAIL) * dt;
+      const tr = R_RAIL + roofTrain.trackOff;
+      car.position.x = Math.cos(state.railAngle) * tr;
+      car.position.z = Math.sin(state.railAngle) * tr;
+      state.heading = -state.railAngle;
+    }
+    updateCarTransform(dt);
+
+    // 🚂 रेल मोड में आती ट्रेन से बचो — सिर्फ अपनी पटरी वाली ट्रेन से!
+    if (state.mode === 'rail') {
+      let hitT = null;
+      trains.forEach(function (t) {
+        if (!t.active) return;
+        if (Math.abs(state.railLane - t.trackOff) > 2.5) return;   // अलग पटरी — कोई टक्कर नहीं
+        let dT = state.railAngle - t.angle;
+        while (dT > Math.PI) dT -= Math.PI * 2;
+        while (dT < -Math.PI) dT += Math.PI * 2;
+        if (dT > -4 / R_RAIL && dT < t.len / R_RAIL) hitT = t;
+      });
+      if (hitT) {
+        let dT = state.railAngle - hitT.angle;
+        while (dT > Math.PI) dT -= Math.PI * 2;
+        while (dT < -Math.PI) dT += Math.PI * 2;
+        state.railAngle = hitT.angle + (dT < 10 / R_RAIL ? -6 / R_RAIL : (hitT.len + 2.5) / R_RAIL);
+        state.speed *= -0.4;
+        car.position.x = Math.cos(state.railAngle) * (R_RAIL + state.railLane);
+        car.position.z = Math.sin(state.railAngle) * (R_RAIL + state.railLane);
+        if (state.trainHitCd <= 0) {
+          state.trainHitCd = 1.2;
+          thump();
+          showLapMessage('TRAIN CRASH — WATCH OUT!');
+        }
+      }
+    }
+
+    // पेड़/चट्टान से टक्कर (ऊँची उड़ान में नहीं लगती)
+    if (state.alt < 5 && state.groundY < 2) for (let i = 0; i < treeObstacles.length; i++) {
+      const o = treeObstacles[i];
+      const ddx = car.position.x - o.x, ddz = car.position.z - o.z;
+      const rr = o.r + 1.3;
+      const d2 = ddx * ddx + ddz * ddz;
+      if (d2 < rr * rr) {
+        const d = Math.sqrt(d2) || 0.001;
+        car.position.x = o.x + (ddx / d) * rr;
+        car.position.z = o.z + (ddz / d) * rr;
+        state.speed *= -0.35;
+        thump();
+        break;
+      }
+    }
+
+    // 🏎️ दूसरी गाड़ियों से टक्कर (हर वाहन का अपना आकार)
+    for (let i = 0; i < trafficCars.length; i++) {
+      const tv = trafficCars[i];
+      if (!tv.active) continue;
+      const tpos = tv.mesh.position;
+      const cdx = car.position.x - tpos.x, cdz = car.position.z - tpos.z;
+      const vr = tv.r + 1.1;
+      if (cdx * cdx + cdz * cdz < vr * vr && Math.abs(state.groundY + state.alt - tpos.y) < 2.5) {
+        const cd = Math.hypot(cdx, cdz) || 0.001;
+        car.position.x = tpos.x + (cdx / cd) * vr;
+        car.position.z = tpos.z + (cdz / cd) * vr;
+        state.speed *= 0.92;   // हल्का-सा — जाम में मेरी गाड़ी नहीं रुकती!
+        // 🚨 ट्रैफिक तोड़ा — ₹ 10 चालान (एक जगह एक बार; खड़ी गाड़ी पर नहीं)
+        // 🚨 सच में तेज़ी से ठोकर मारी (रैम) तभी ₹ 10 — हल्का टच/धक्का खाना बेवजह नहीं!
+        if (state.fineCd <= 0 && Math.abs(state.speed) > 8) tryFine10('TRAFFIC FINE — ₹ 10!');
+        break;
+      }
+    }
+
+    // 🛣️ शॉर्टकट/कनेक्टर वाले वाहनों से भी टक्कर — सिर्फ ₹ 10!
+    for (let i = 0; i < pathTraffic.length; i++) {
+      const tv = pathTraffic[i];
+      if (!tv.active) continue;
+      const tpos = tv.mesh.position;
+      const cdx = car.position.x - tpos.x, cdz = car.position.z - tpos.z;
+      const vr = tv.r + 1.1;
+      if (cdx * cdx + cdz * cdz < vr * vr && Math.abs(state.groundY + state.alt - tpos.y) < 2.5) {
+        const cd = Math.hypot(cdx, cdz) || 0.001;
+        car.position.x = tpos.x + (cdx / cd) * vr;
+        car.position.z = tpos.z + (cdz / cd) * vr;
+        state.speed *= 0.92;   // हल्का-सा — जाम में मेरी गाड़ी नहीं रुकती!
+        // 🚨 सच में तेज़ी से ठोकर मारी (रैम) तभी ₹ 10 — हल्का टच/धक्का खाना बेवजह नहीं!
+        if (state.fineCd <= 0 && Math.abs(state.speed) > 8) tryFine10('TRAFFIC FINE — ₹ 10!');
+        break;
+      }
+    }
+
+    // 🚨 सिर्फ रेड/येलो की लाइन क्रॉस की तो फाइन — ग्रीन पर या बेवजह कभी नहीं!
+    if (state.phase === 'race' && !state.chase && state.fineCd <= 0 && !state.autoPath && Math.abs(state.speed) > 6) {
+      for (let k = 0; k < signals.length; k++) {
+        const s = signals[k];
+        const dAhead = ((s.pi - idx + SEG) % SEG) * sampleLen;    // सिग्नल आगे कितना दूर
+        if (dAhead < 14) s.wasNear = true;                        // सिग्नल के पास पहुँचा
+        const justCrossed = s.wasNear && dAhead > (SEG - 6) * sampleLen;   // अभी लाइन क्रॉस की
+        if (dAhead > (SEG / 2) * sampleLen) s.wasNear = false;
+        if (justCrossed) {
+          s.wasNear = false;
+          if (s.phase !== 'green') {
+            state.fineCd = 3;
+            if (tryFine10('RED LIGHT CROSS — FINE ₹ 10!')) startChase();
+          }
+          break;
+        }
+      }
+    }
+
+    // ⭐ सितारे बीनो
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      if (s.got) continue;
+      const sdx = car.position.x - s.x, sdz = car.position.z - s.z;
+      if (sdx * sdx + sdz * sdz < 6 && Math.abs(state.groundY + state.alt + 0.8 - s.baseY) < 3.2) {
+        s.got = true; s.mesh.visible = false;
+        starCount++;
+        beep(1200); setTimeout(function () { beep(1600); }, 90);
+        if (starCount === TOTAL_STARS) showLapMessage('ALL STARS COLLECTED!');
+      }
+    }
+
+    // 💰 सिक्के बीनो — पैसे कमाओ!
+    for (let i = 0; i < coins.length; i++) {
+      const c = coins[i];
+      if (c.got) continue;
+      const ddx = car.position.x - c.x, ddz = car.position.z - c.z;
+      if (ddx * ddx + ddz * ddz < 5.5 && Math.abs(state.groundY + state.alt + 0.8 - c.baseY) < 3.2) {
+        c.got = true;
+        c.mesh.visible = false;
+        money += 10;
+        beep(1500);
+        setTimeout(function () { beep(1900); }, 80);
+      }
+    }
+
+    // ट्रैक प्रोग्रेस (लैप काउंटिंग) — सिर्फ रोड पर चलने पर गिनो,
+    // ताकि रेल/नाव में जाकर लौटने पर बीच में लैप पूरा न हो जाए!
+    let delta = idx - state.lastIdx;
+    if (delta > SEG / 2) delta -= SEG;
+    if (delta < -SEG / 2) delta += SEG;
+    const onRoadNow = distRoad < ROAD_HALF + 3;
+    if (onRoadNow && Math.abs(delta) <= 12) state.prog += delta;
+    state.lastIdx = idx;
+    // 🛣️ शॉर्टकट पर प्रोग्रेस सीधे दूसरी ओर जोड़ो — वरना काटने पर लैप पूरा नहीं होगा!
+    if (onShort >= 0 && !shortcuts[onShort].connector) {
+      const sc = shortcuts[onShort];
+      let dAB = sc.b - sc.a;
+      if (dAB > SEG / 2) dAB -= SEG;
+      if (dAB < -SEG / 2) dAB += SEG;
+      state.prog = sc.a + dAB * shortF;
+      state.lastIdx = ((Math.round(state.prog) % SEG) + SEG) % SEG;
+    }
+
+    if (delta < 0 && state.speed > 4 && onRoadNow) state.wrongTimer += dt; else state.wrongTimer = Math.max(0, state.wrongTimer - dt * 2);
+    document.getElementById('wrong-way').style.display = (state.wrongTimer > 1.2 && state.mode === 'road') ? 'block' : 'none';
+
+    if (state.phase === 'race') {
+      const lapProg = state.prog - state.lapStartProg;
+      if (lapProg > SEG / 2) state.halfPassed = true;
+      if (lapProg >= SEG && state.halfPassed) {
+        // लैप पूरा!
+        const lt = state.lapTime;
+        if (!state.bestLap || lt < state.bestLap) {
+          state.bestLap = lt;
+          localStorage.setItem('jungleBestLap', String(lt));
+        }
+        state.lap++;
+        state.lapStartProg = state.prog;
+        state.halfPassed = false;
+        state.lapTime = 0;
+        if (state.lap > TOTAL_LAPS) {
+          finishRace();
+        } else {
+          showLapMessage('LAP ' + (state.lap - 1) + ' COMPLETE! (' + lt.toFixed(1) + 's)');
+          // सितारे फिर से बिखेर दो
+          stars.forEach(function (s) { s.got = false; s.mesh.visible = true; });
+          starCount = 0;
+        }
+      }
+      state.raceTime += dt;
+      state.lapTime += dt;
+    }
+  }
+
+  let thumpCd = 0, railChuffT = 0;
+  function thump() {
+    if (!audioCtx || muted || thumpCd > 0) return;
+    thumpCd = 0.3;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'square'; o.frequency.value = 70;
+    g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.22);
+  }
+
+  // 🪽 स्पेस = उड़ान ऑन/ऑफ
+  function toggleFlight() {
+    if (state.phase !== 'race') return;
+    initAudio();
+    if (!state.flight && state.alt <= 0.01) {
+      state.flight = true;
+      showLapMessage('FLYING!');
+      beep(700); setTimeout(function () { beep(1050); }, 150);
+    } else if (state.flight) {
+      state.flight = false;
+      showLapMessage('LANDING...');
+      beep(600);
+    }
+  }
+
+  // 💧 F = वाटर जेट — पानी की फुहार से उड़ान (7 सेकंड)
+  function toggleWaterJet() {
+    if (state.phase !== 'race' || state.flight) return;
+    initAudio();
+    if (!state.waterJet) {
+      state.waterJet = true;
+      state.jetT = 7;
+      showLapMessage('WATER JET ON — FLY OVER WATER!');
+      beep(800); setTimeout(function () { beep(1150); }, 150);
+    } else {
+      state.waterJet = false;
+      showLapMessage('WATER JET OFF!');
+      beep(450);
+    }
+  }
+  // 🚗🚂🛶 वाहन मोड बदलो — बीच में कुछ रुके बिना, तुरंत स्विच!
+  function nearestConnector(isRail) {
+    let best = null, bestD = Infinity;
+    shortcuts.forEach(function (sc) {
+      if (!sc.connector || sc.rail !== isRail) return;
+      const d = Math.hypot(car.position.x - sc.samples[0].x, car.position.z - sc.samples[0].z);
+      if (d < bestD) { bestD = d; best = sc; }
+    });
+    return best;
+  }
+  // 🎚️ लेवल लागू करो — ट्रैफिक/ट्रेन की संख्या और रफ्तार लेवल के हिसाब से
+  function applyLevel() {
+    const L = LEVELS[curLevel - 1];
+    trafficCars.forEach(function (t, i) {
+      t.active = i < L.traffic;
+      t.mesh.visible = t.active;
+      t.speed = t.baseSpeed * L.trafficSpd;
+    });
+    pathTraffic.forEach(function (t, i) {
+      t.active = i < L.pathT;
+      t.mesh.visible = t.active;
+    });
+    trains.forEach(function (t, i) {
+      t.active = i < L.trains;
+      t.g.visible = t.active;
+      t.speed = t.baseSpeed * L.trainSpd;
+    });
+  }
+  // 🎚️ लेवल बार — चुनो और खेलो (अगला लेवल जीतने पर खुलता है)
+  function renderLevelBar() {
+    document.querySelectorAll('#level-bar .lbtn').forEach(function (el) {
+      const l = parseInt(el.getAttribute('data-l'), 10);
+      el.classList.toggle('sel', l === curLevel);
+      el.classList.toggle('lock', l > unlocked);
+      el.querySelector('small').textContent = (l > unlocked) ? 'LOCKED' : LEVELS[l - 1].name;
+    });
+  }
+  document.querySelectorAll('#level-bar .lbtn').forEach(function (el) {
+    el.addEventListener('click', function () {
+      const l = parseInt(el.getAttribute('data-l'), 10);
+      if (l > unlocked) {
+        showLapMessage('WIN LEVEL ' + unlocked + ' TO UNLOCK!');
+        beep(300);
+        return;
+      }
+      curLevel = l;
+      renderLevelBar();
+      beep(700);
+    });
+  });
+  renderLevelBar();
+  function setMode(mode, auto) {
+    if (state.phase !== 'race' || state.mode === mode) return;
+    state.mode = mode;
+    state.flight = false;
+    state.waterJet = false;
+    boatParts.visible = (mode === 'boat');
+    state.wrongTimer = 0;
+    if (mode === 'rail') {
+      if (distToRail(car.position.x, car.position.z) > 6) {
+        // टेलीपोर्ट नहीं — कनेक्टर रोड से खुद चलकर पटरी तक पहुँचो!
+        const rc = nearestConnector(true);
+        const arr = rc.samples.slice();
+        if (Math.hypot(car.position.x - arr[arr.length - 1].x, car.position.z - arr[arr.length - 1].z) <
+            Math.hypot(car.position.x - arr[0].x, car.position.z - arr[0].z)) arr.reverse();
+        state.autoPath = { pts: [{ x: car.position.x, z: car.position.z }].concat(arr), i: 0, then: 'rail' };
+        showLapMessage('RAIL — DRIVING TO THE TRACKS...');
+        beep(600);
+        return;
+      }
+      // पटरी के करीब हो — सीधे उतरो
+      state.railAngle = Math.atan2(car.position.z, car.position.x);
+      state.railLane = Math.max(-7, Math.min(7, Math.hypot(car.position.x, car.position.z) - R_RAIL));
+      state.heading = -state.railAngle;
+      showLapMessage('RAIL MODE — CIRCLE THE LOOP! A/D SWITCHES TRACKS');
+      beep(600);
+    } else if (mode === 'boat') {
+      if (distToRiver(car.position.x, car.position.z) > 9) {
+        // पानी दूर है — कनेक्टर रोड से नदी किनारे तक खुद चलो!
+        const rc = nearestConnector(false);
+        const arr = rc.samples.slice();
+        if (Math.hypot(car.position.x - arr[arr.length - 1].x, car.position.z - arr[arr.length - 1].z) <
+            Math.hypot(car.position.x - arr[0].x, car.position.z - arr[0].z)) arr.reverse();
+        state.autoPath = { pts: [{ x: car.position.x, z: car.position.z }].concat(arr), i: 0, then: 'boat' };
+        showLapMessage('BOAT — DRIVING TO THE RIVER...');
+        beep(750);
+        return;
+      }
+      // पानी के करीब हो — सीधे नाव बनो
+      state.boatAngle = Math.atan2(car.position.z, car.position.x);
+      state.boatLane = Math.max(-5, Math.min(5, Math.hypot(car.position.x, car.position.z) - R_RIVER));
+      state.heading = -state.boatAngle;
+      showLapMessage(auto ? 'AUTO-BOAT MODE!' : 'BOAT MODE — SAIL THE RIVER!');
+      beep(750);
+    } else {
+      showLapMessage(auto ? 'BACK ON LAND — CAR MODE!' : 'ROAD MODE!');
+      beep(500);
+    }
+  }
+  function updateModeButtons() {
+    document.getElementById('mode-road').classList.toggle('active', state.mode === 'road' && !state.flight);
+    document.getElementById('mode-rail').classList.toggle('active', state.mode === 'rail');
+    document.getElementById('mode-boat').classList.toggle('active', state.mode === 'boat');
+    document.getElementById('mode-fly').classList.toggle('active', state.flight);
+  }
+  // ============================================================
+  //  कैमरा
+  // ============================================================
+  const camTarget = new THREE.Vector3();
+  function updateCamera(dt) {
+    const fx = Math.sin(state.heading), fz = Math.cos(state.heading);
+    const back = 10 + Math.abs(state.speed) * 0.12;
+    const desired = new THREE.Vector3(
+      car.position.x - fx * back,
+      5 + state.alt + Math.abs(state.speed) * 0.05,
+      car.position.z - fz * back
+    );
+    camera.position.lerp(desired, 1 - Math.pow(0.0015, dt));
+    camTarget.lerp(new THREE.Vector3(car.position.x + fx * 6, 1.5 + state.alt, car.position.z + fz * 6), 1 - Math.pow(0.0005, dt));
+    camera.lookAt(camTarget);
+
+    // सूरज की शैडो गाड़ी के पीछे-पीछे
+    sun.position.set(car.position.x + 40, 70, car.position.z + 25);
+    sun.target.position.copy(car.position);
+  }
+
+  // ============================================================
+  //  HUD + मिनीमैप
+  // ============================================================
+  const lapValueEl = document.getElementById('lap-value');
+  const timeValueEl = document.getElementById('time-value');
+  const bestValueEl = document.getElementById('best-value');
+  const starValueEl = document.getElementById('star-value');
+  const moneyValueEl = document.getElementById('money-value');
+  const posValueEl = document.getElementById('pos-value');
+  const fuelValueEl = document.getElementById('fuel-value');
+  const levelValueEl = document.getElementById('level-value');
+  const speedValueEl = document.getElementById('speed-value');
+  const lapMsgEl = document.getElementById('lap-message');
+  if (state.bestLap) bestValueEl.textContent = state.bestLap.toFixed(1) + 's';
+
+  let msgTimer = null;
+  function showLapMessage(text) {
+    lapMsgEl.textContent = text;
+    lapMsgEl.style.opacity = 1;
+    clearTimeout(msgTimer);
+    msgTimer = setTimeout(function () { lapMsgEl.style.opacity = 0; }, 2200);
+  }
+
+  const mmCanvas = document.getElementById('minimap');
+  const mmCtx = mmCanvas.getContext('2d');
+  function drawMinimap() {
+    const W = mmCanvas.width, H = mmCanvas.height, pad = 14;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    pts.forEach(function (p) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+    });
+    // पूरा नक़्शा दिखे — नदी और पटरी के गोल लूप भी
+    minX = Math.min(minX, -R_RAIL - 15); maxX = Math.max(maxX, R_RAIL + 15);
+    minZ = Math.min(minZ, -R_RAIL - 15); maxZ = Math.max(maxZ, R_RAIL + 15);
+    const sc = Math.min((W - pad * 2) / (maxX - minX), (H - pad * 2) / (maxZ - minZ));
+    function mx(x) { return pad + (x - minX) * sc; }
+    function mz(z) { return H - (pad + (z - minZ) * sc); }
+
+    mmCtx.clearRect(0, 0, W, H);
+    mmCtx.strokeStyle = 'rgba(255,255,255,0.85)';
+    mmCtx.lineWidth = 4;
+    mmCtx.lineJoin = 'round';
+    mmCtx.beginPath();
+    pts.forEach(function (p, i) { i ? mmCtx.lineTo(mx(p.x), mz(p.z)) : mmCtx.moveTo(mx(p.x), mz(p.z)); });
+    mmCtx.closePath();
+    mmCtx.stroke();
+
+    // 🚂 रेलवे पटरी (भूरा गोल लूप)
+    mmCtx.strokeStyle = 'rgba(90,70,50,0.95)';
+    mmCtx.lineWidth = 3;
+    mmCtx.beginPath();
+    mmCtx.arc(mx(0), mz(0), R_RAIL * sc, 0, Math.PI * 2);
+    mmCtx.stroke();
+
+    // 🌊 नदी (नीला गोल लूप)
+    mmCtx.strokeStyle = 'rgba(63,127,196,0.95)';
+    mmCtx.lineWidth = 4;
+    mmCtx.beginPath();
+    mmCtx.arc(mx(0), mz(0), R_RIVER * sc, 0, Math.PI * 2);
+    mmCtx.stroke();
+
+    // 🛣️ शॉर्टकट (पीली डैश) + कनेक्टर (हरी डैश)
+    mmCtx.lineWidth = 3;
+    mmCtx.setLineDash([5, 4]);
+    shortcuts.forEach(function (sc) {
+      mmCtx.strokeStyle = sc.connector ? 'rgba(140,255,140,0.95)' : 'rgba(255,220,80,0.95)';
+      mmCtx.beginPath();
+      sc.samples.forEach(function (sm, i) {
+        if (i === 0) mmCtx.moveTo(mx(sm.x), mz(sm.z));
+        else mmCtx.lineTo(mx(sm.x), mz(sm.z));
+      });
+      mmCtx.stroke();
+    });
+    mmCtx.setLineDash([]);
+
+    // लीजेंड
+    mmCtx.font = 'bold 9px Arial';
+    mmCtx.fillStyle = 'rgba(63,127,196,0.95)';
+    mmCtx.fillText('RIVER', 6, H - 26);
+    mmCtx.fillStyle = 'rgba(150,120,80,0.95)';
+    mmCtx.fillText('RAIL', 6, H - 16);
+    mmCtx.fillStyle = 'rgba(255,220,80,0.95)';
+    mmCtx.fillText('SHORTCUT', 6, H - 6);
+
+    // फिनिश पॉइंट
+    mmCtx.fillStyle = '#f2c744';
+    mmCtx.beginPath();
+    mmCtx.arc(mx(pts[0].x), mz(pts[0].z), 4, 0, 7);
+    mmCtx.fill();
+
+    // गाड़ी
+    mmCtx.fillStyle = '#ff3b1e';
+    mmCtx.beginPath();
+    mmCtx.arc(mx(car.position.x), mz(car.position.z), 5, 0, 7);
+    mmCtx.fill();
+  }
+
+  // ============================================================
+  //  काउंटडाउन / रेस फ्लो
+  // ============================================================
+  const cdEl = document.getElementById('countdown-num');
+  function startCountdown() {
+    state.phase = 'countdown';
+    placeCarAtStart();
+    let n = 3;
+    cdEl.textContent = n;
+    const iv = setInterval(function () {
+      n--;
+      if (n > 0) { cdEl.textContent = n; }
+      else if (n === 0) { cdEl.textContent = 'GO!'; beep(880); }
+      else {
+        clearInterval(iv);
+        cdEl.textContent = '';
+        state.phase = 'race';
+        state.raceTime = 0; state.lapTime = 0;
+      }
+      if (n > 0) beep(440);
+    }, 1000);
+  }
+
+  // 🌸 जीत की खुशी — गाड़ी के ऊपर रंग-बिरंगे फूल गिरेंगे
+  const winFlowers = [];
+  const WIN_COLORS = [0xff5b7f, 0xffb03a, 0xffe14d, 0xb07cff, 0x5bc8ff, 0xff7ad9, 0xffffff];
+  let flowerFall = 0, flowerSpawnT = 0;
+  (function initWinFlowers() {
+    for (let i = 0; i < 80; i++) {
+      const g = new THREE.Group();
+      const pMat = new THREE.MeshLambertMaterial({ color: WIN_COLORS[i % WIN_COLORS.length] });
+      const pGeo = new THREE.SphereGeometry(0.55, 6, 5);
+      for (let p = 0; p < 5; p++) {
+        const pet = new THREE.Mesh(pGeo, pMat);
+        const a = p / 5 * Math.PI * 2;
+        pet.position.set(Math.cos(a) * 0.75, 0, Math.sin(a) * 0.75);
+        pet.scale.set(1, 0.45, 1);
+        g.add(pet);
+      }
+      const heart = new THREE.Mesh(new THREE.SphereGeometry(0.38, 6, 5),
+        new THREE.MeshLambertMaterial({ color: 0xffe89a }));
+      heart.position.y = 0.15;
+      g.add(heart);
+      g.visible = false;
+      scene.add(g);
+      winFlowers.push({ m: g, vy: 0, spin: 0, ph: Math.random() * 6.28, live: false, landed: false, rest: 0 });
+    }
+  })();
+  function spawnWinFlower(cx, cz, spread) {
+    const f = winFlowers.find(function (w) { return !w.live; });
+    if (!f) return;
+    f.live = true; f.landed = false;
+    f.m.visible = true;
+    const a = Math.random() * Math.PI * 2;
+    const r = (spread !== undefined) ? Math.random() * spread : (Math.random() < 0.35 ? Math.random() * 3 : 3 + Math.random() * 11);
+    const bx = (cx !== undefined) ? cx : car.position.x;
+    const bz = (cz !== undefined) ? cz : car.position.z;
+    f.m.position.set(bx + Math.cos(a) * r, (spread !== undefined ? 7 + Math.random() * 6 : 10 + Math.random() * 9), bz + Math.sin(a) * r);
+    f.vy = -(3.2 + Math.random() * 2.6);
+    f.spin = (Math.random() - 0.5) * 4;
+    f.rest = 1 + Math.random() * 1.5;
+    f.m.rotation.set(Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28);
+  }
+  function flowerBurst(x, z) {   // 🎁 गिफ्ट खुला — उसमें से फूलों की बरसात!
+    for (let k = 0; k < 16; k++) spawnWinFlower(x, z, 3.2);
+  }
+
+  // 🌷 रोड के किनारे रंग-बिरंगे फूलों की क्यारियाँ
+  (function initRoadFlowers() {
+    const stemMatF = new THREE.MeshLambertMaterial({ color: 0x2f8f3f });
+    const bedGeo = new THREE.CylinderGeometry(1.1, 1.35, 0.4, 8);
+    const bedMat = new THREE.MeshLambertMaterial({ color: 0x7a4f2a });
+    const petGeo = new THREE.SphereGeometry(0.4, 6, 5);
+    const heartGeo = new THREE.SphereGeometry(0.28, 6, 5);
+    const heartMat = new THREE.MeshLambertMaterial({ color: 0xffe89a });
+    for (let i = 0; i < 90; i++) {
+      const idx = Math.floor(Math.random() * SEG);
+      const side = Math.random() < 0.5 ? 1 : -1;
+      const off = ROAD_HALF + 2.4 + Math.random() * 4.5;
+      const bx = pts[idx].x + normals[idx].x * off * side;
+      const bz = pts[idx].z + normals[idx].z * off * side;
+      if (distToRiver(bx, bz) < 16) continue;   // नदी में फूल नहीं
+      const by = roadHeight(idx);
+      const bed = new THREE.Mesh(bedGeo, bedMat);
+      bed.position.set(bx, by + 0.18, bz);
+      bed.rotation.y = Math.random() * 6.28;
+      scene.add(bed);
+      const nF = 4 + Math.floor(Math.random() * 4);   // हर क्यारी में 4–7 फूल
+      for (let k = 0; k < nF; k++) {
+        const fl = new THREE.Group();
+        const st = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 1.1, 5), stemMatF);
+        st.position.y = 0.55;
+        fl.add(st);
+        const pMat = new THREE.MeshLambertMaterial({ color: WIN_COLORS[Math.floor(Math.random() * WIN_COLORS.length)] });
+        for (let p = 0; p < 5; p++) {
+          const pet = new THREE.Mesh(petGeo, pMat);
+          const a = p / 5 * Math.PI * 2;
+          pet.position.set(Math.cos(a) * 0.5, 1.1, Math.sin(a) * 0.5);
+          pet.scale.set(1, 0.5, 1);
+          fl.add(pet);
+        }
+        const heart = new THREE.Mesh(heartGeo, heartMat);
+        heart.position.y = 1.2;
+        fl.add(heart);
+        fl.position.set(bx + (Math.random() - 0.5) * 1.4, by + 0.3, bz + (Math.random() - 0.5) * 1.4);
+        fl.rotation.y = Math.random() * 6.28;
+        scene.add(fl);
+      }
+    }
+  })();
+
+  function finishRace() {
+    if (state.finishing) return;   // दोबारा फायर न हो
+    const finRank = playerRank();   // 🏆 फिनिश पर मेरी जगह
+    state.finishing = true;
+    flowerFall = 10;   // 🌸 10 सेकंड फूलों की बारिश — जीत मुबारक!
+    state.phase = 'finished';
+    showLapMessage('ROUND ' + curLevel + ' COMPLETE! TOTAL TIME ' + state.raceTime.toFixed(1) + 's');
+    // 🎚️ यह लेवल जीता — अगला लेवल अनलॉक!
+    if (curLevel === unlocked && unlocked < LEVELS.length) {
+      unlocked++;
+      localStorage.setItem('jungleUnlocked', String(unlocked));
+      renderLevelBar();
+    }
+    cdEl.textContent = 'FINISH';
+    setTimeout(function () { cdEl.textContent = ''; }, 2600);
+    beep(660); setTimeout(function () { beep(880); }, 200); setTimeout(function () { beep(1100); }, 400);
+    // 🎉 कंग्रैट्स पॉप-अप — Try Again / Play Next Level बटन के साथ
+    setTimeout(function () {
+      document.getElementById('ld-msg').textContent = 'ROUND ' + curLevel + ' COMPLETE!';
+      document.getElementById('ld-stats').textContent = 'TIME ' + state.raceTime.toFixed(1) + 's   ·   POSITION ' + (ORD[finRank - 1] || finRank + 'th') + ' / ' + (rivals.length + 1) + '   ·   MONEY ₹ ' + money;
+      const nxt = document.getElementById('ld-next');
+      if (curLevel < LEVELS.length) {
+        nxt.style.display = 'inline-block';
+        nxt.textContent = 'PLAY ROUND ' + (curLevel + 1);   // 🎮 अगला राउंड बटन
+      } else {
+        nxt.style.display = 'none';   // सारे लेवल जीत गए — चैंपियन!
+      }
+      document.getElementById('level-done').style.display = 'flex';
+      beep(880); setTimeout(function () { beep(1180); }, 200);
+    }, 1300);
+  }
+
+  // 🚓 पुलिस का पीछा — सबसे पास की चौकी की गाड़ी तेरी गाड़ी के पीछे भागेगी
+  function startChase(target) {
+    const tx = target ? target.mesh.position.x : car.position.x;
+    const tz = target ? target.mesh.position.z : car.position.z;
+    let best = null, bestD = Infinity;
+    policePosts.forEach(function (pp) {
+      const d = Math.hypot(pp.x - tx, pp.z - tz);
+      if (d < bestD) { bestD = d; best = pp; }
+    });
+    if (!best || bestD > 120) return; // बहुत दूर की चौकी नहीं भागेगी
+    state.chase = { g: best.g, ttl: 12, tv: target || null };
+    showLapMessage(target ? 'POLICE CHASING ' + target.vName + '!' : 'POLICE CHASING YOU — STOP!');
+    beep(300); setTimeout(function () { beep(240); }, 150);
+  }
+
+  // 🎉 पॉप-अप बटन — Try Again या अगला लेवल
+  document.getElementById('ld-retry').addEventListener('click', function () {
+    document.getElementById('level-done').style.display = 'none';
+    state.finishing = false;
+    chainMoney = true;
+    resetRace();
+  });
+  document.getElementById('ld-next').addEventListener('click', function () {
+    document.getElementById('level-done').style.display = 'none';
+    state.finishing = false;
+    chainMoney = true;
+    if (curLevel < LEVELS.length) {
+      curLevel++;
+      applyLevel();
+      levelValueEl.textContent = String(curLevel);
+      renderLevelBar();
+    }
+    resetRace();
+  });
+
+  let chainMoney = false;
+
+  // 💸 फाइन नियम — ₹ 10, और एक ही जगह पर सिर्फ एक बार! (गाड़ी 30 यूनिट आगे बढ़ाओ तब फिर कटे)
+  let lastFineX = -99999, lastFineZ = -99999;
+  function tryFine10(msg) {
+    const df = Math.hypot(car.position.x - lastFineX, car.position.z - lastFineZ);
+    if (df < 30) return false;   // वहीं खड़े-खड़े बार-बार फाइन नहीं!
+    lastFineX = car.position.x;
+    lastFineZ = car.position.z;
+    money = Math.max(0, money - 10);
+    showLapMessage(msg);
+    thump();
+    return true;
+  }
+
+  // ============================================================
+  //  🌧️ बारिश + ⚡ बिजली — कभी-कभार आसमान से पानी बरसेगा
+  // ============================================================
+  const RAIN_N = 700;
+  const rainGeo = new THREE.BufferGeometry();
+  rainGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(RAIN_N * 3), 3));
+  const rainPts = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0x9fc7e8, size: 0.3, transparent: true, opacity: 0.6 }));
+  rainPts.visible = false;
+  scene.add(rainPts);
+  let rainT = 20 + Math.random() * 25;   // पहली बारिश कब
+  let rainOn = 0;
+  let boltT = 0;
+  const SKY_CLEAR = 0xc7e0ee, SKY_RAIN = 0x8fa8b8;
+
+  function resetRace() {
+    state.lap = 1; state.raceTime = 0; state.lapTime = 0;
+    state.wrongTimer = 0;
+    state.finishing = false;   // नई दौड़ — पॉप-अप बंद
+    state.boostT = 0;          // बूस्ट भी रीसेट
+    lapValueEl.textContent = '1 / ' + TOTAL_LAPS;
+    deployAllGifts();   // 🎁 नई रेस — 4 गिफ्ट फिर रोड पर
+    // 🔄 नई रेस — स्टार भी दोबारा रोड पर (सिर्फ रिस्टार्ट/रिफ्रेश पर)
+    stars.forEach(function (s) { s.got = false; s.mesh.visible = true; });
+    starCount = 0;
+    placeRivals();   // 🏁 राइवल गाड़ियाँ भी नई रेस के ग्रिड पर
+    startCountdown();
+  }
+
+  function beep(freq) {
+    if (!audioCtx || muted) return;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.32);
+  }
+
+  document.getElementById('start-btn').addEventListener('click', function () {
+    document.getElementById('start-screen').style.display = 'none';
+    initAudio();
+    applyLevel();
+    levelValueEl.textContent = String(curLevel);
+    startCountdown();
+  });
+
+  // ============================================================
+  //  मेन लूप
+  // ============================================================
+  let prevTime = performance.now();
+  function animate() {
+    requestAnimationFrame(animate);
+    const now = performance.now();
+    let dt = Math.min((now - prevTime) / 1000, 0.05);
+    prevTime = now;
+    if (!isFinite(dt) || dt <= 0) dt = 0.016;   // NaN/zero dt — गेम कभी न रुके
+
+    thumpCd = Math.max(0, thumpCd - dt);
+    state.trainHitCd = Math.max(0, state.trainHitCd - dt);
+    state.fineCd = Math.max(0, state.fineCd - dt);
+    // 🚓 पुलिस ने रोका — गाड़ी नहीं चलेगी जब तक छोड़े
+    state.policeStopT = Math.max(0, (state.policeStopT || 0) - dt);
+    if (state.policeStopT > 0 && state.phase === 'race') state.speed = 0;
+    if (state.boostT > 0) state.boostT -= dt;
+    elapsedT += dt;
+
+    if (state.phase === 'race') physics(dt);
+    else if (state.phase !== 'menu') updateCarTransform(dt);
+    updateTraffic(dt);
+    updatePathTraffic(dt);
+    updateAnimals(dt);
+    updateFloaters(dt);
+
+    updateCamera(dt);
+
+    // 🪽 पंख फड़फड़ाओ (उड़ान में), वरना मुड़कर बंद हो जाएँ
+    const wingT = state.flight ? (-0.25 + Math.sin(elapsedT * 11) * 0.5) : WING_FOLDED;
+    wingL.rotation.z += (wingT - wingL.rotation.z) * Math.min(1, dt * 7);
+    wingR.rotation.z += (-wingT - wingR.rotation.z) * Math.min(1, dt * 7);
+
+    // ⭐ सितारे घुमाओ और उछालो
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      if (!s.got) {
+        s.mesh.rotation.y += dt * 2.2;
+        s.mesh.position.y = s.baseY + Math.sin(elapsedT * 2 + s.phase) * 0.3;
+      }
+    }
+
+    // 💰 सिक्के घुमाओ
+    for (let i = 0; i < coins.length; i++) {
+      const c = coins[i];
+      if (!c.got) {
+        c.mesh.rotation.y += dt * 3;
+        c.mesh.position.y = c.baseY + Math.sin(elapsedT * 2.4 + c.phase) * 0.25;
+      }
+    }
+
+    // 🌈 रेनबो ट्रेल छोड़ो
+    trailTimer += dt;
+    if (state.phase === 'race' && Math.abs(state.speed) > 6 && trailTimer > 0.05) {
+      trailTimer = 0;
+      const tp = trailPool[trailIdx];
+      trailIdx = (trailIdx + 1) % TRAIL_N;
+      const tfx = Math.sin(state.heading), tfz = Math.cos(state.heading);
+      tp.mesh.position.set(car.position.x - tfx * 2.3, 0.7 + state.alt + Math.random() * 0.4, car.position.z - tfz * 2.3);
+      tp.mesh.material.color.setHex(RAINBOW[trailIdx % 6]);
+      tp.mesh.visible = true;
+      tp.mesh.scale.setScalar(1);
+      tp.life = 1;
+    }
+    for (let i = 0; i < TRAIL_N; i++) {
+      const tp = trailPool[i];
+      if (tp.life > 0) {
+        tp.life -= dt * 1.3;
+        if (tp.life <= 0) tp.mesh.visible = false;
+        else { tp.mesh.material.opacity = tp.life * 0.85; tp.mesh.scale.setScalar(0.4 + tp.life); }
+      }
+    }
+
+    // 🚂 सारी ट्रेनें चलाओ — हर अपनी पटरी पर चक्कर!
+    let nearTrain = null, nearD = Infinity;
+    trains.forEach(function (t) {
+      if (!t.active) { t.g.visible = false; return; }
+      t.g.visible = true;
+      // कभी-कभार ट्रेन पटरी से उतरती है — फिर खुद संभल जाती है!
+      if (!t.derail && Math.random() < dt * 0.002) {
+        t.derail = true;
+        t.dT = 4 + Math.random() * 2;
+        showLapMessage('TRAIN DERAILED!');
+        thump();
+      }
+      if (t.derail) {
+        t.dT -= dt;
+        t.g.rotation.z = Math.min(0.7, (t.g.rotation.z || 0) + dt * 0.4);
+        t.g.position.y = Math.max(0.05, t.g.position.y - dt * 0.12);
+        if (t.dT <= 0) { t.derail = false; t.g.rotation.z = 0; t.g.position.y = 0.4; }
+      } else {
+        const tr = R_RAIL + t.trackOff;
+        t.angle += (t.speed / R_RAIL) * dt;
+        t.g.position.set(Math.cos(t.angle) * tr, 0.4, Math.sin(t.angle) * tr);
+        t.g.rotation.y = Math.PI / 2 - t.angle;
+        t.wheels.forEach(function (w) { w.rotation.z -= (t.speed * dt) / 0.55; });
+      }
+      const dT = camera.position.distanceTo(t.g.position);
+      if (dT < nearD) { nearD = dT; nearTrain = t; }
+    });
+
+    // भाप के धुएँ + चुफ-चुफ आवाज़ (सबसे पास की ट्रेन से)
+    puffTimer -= dt;
+    if (puffTimer <= 0 && nearTrain) {
+      puffTimer = 0.55;
+      nearTrain.chimney.getWorldPosition(puffPos);
+      const pp = puffPool[puffIdx];
+      puffIdx = (puffIdx + 1) % PUFFS;
+      pp.mesh.position.set(puffPos.x, puffPos.y + 0.5, puffPos.z);
+      pp.mesh.visible = true;
+      pp.mesh.scale.setScalar(0.6);
+      pp.life = 1;
+      const vol = Math.max(0, 1 - nearD / 200);
+      if (vol > 0.02) playChuff(vol);
+      whistleTimer -= 0.55;
+      if (whistleTimer <= 0) {
+        whistleTimer = 12 + Math.random() * 12;
+        if (vol > 0.05) playWhistle(vol);
+      }
+    }
+    for (let i = 0; i < PUFFS; i++) {
+      const pp = puffPool[i];
+      if (pp.life > 0) {
+        pp.life -= dt * 0.55;
+        if (pp.life <= 0) pp.mesh.visible = false;
+        else {
+          pp.mesh.position.y += dt * 2.4;
+          pp.mesh.scale.setScalar(0.6 + (1 - pp.life) * 2.6);
+          pp.mesh.material.opacity = pp.life * 0.7;
+        }
+      }
+    }
+
+    // 🌬️ विंडमिल के पंखे + बहता पानी
+    windmillHubs.forEach(function (h) { h.rotation.z += dt * 0.9; });
+    waterTex.offset.y -= dt * 0.15;
+
+    // 💧 वाटर जेट की फुहार + 🛶 नाव की लहरें
+    jetTimer -= dt;
+    const inRiverNow = distToRiver(car.position.x, car.position.z) < 8 && car.position.y < 1;
+    const wakeOn = state.mode === 'boat' && !state.flight && state.alt < 1 && inRiverNow && Math.abs(state.speed) > 3;
+    if ((state.waterJet || wakeOn) && jetTimer <= 0) {
+      jetTimer = state.waterJet ? 0.05 : 0.09;
+      const jp = jetPool[jetIdx];
+      jetIdx = (jetIdx + 1) % JET_N;
+      if (state.waterJet) {
+        jp.mesh.position.set(car.position.x + (Math.random() - 0.5) * 1.4, car.position.y - 0.5, car.position.z + (Math.random() - 0.5) * 1.4);
+        jp.mesh.material.color.setHex(0x7ec8ff);
+        jp.life = 0.5;
+        jp.vx = (Math.random() - 0.5) * 2;
+        jp.vy = -4 - Math.random() * 2;
+        jp.vz = (Math.random() - 0.5) * 2;
+      } else {
+        const wfx = Math.sin(state.heading), wfz = Math.cos(state.heading);
+        jp.mesh.position.set(car.position.x - wfx * 2.4 + (Math.random() - 0.5), 0.2, car.position.z - wfz * 2.4 + (Math.random() - 0.5));
+        jp.mesh.material.color.setHex(0xeaf6ff);
+        jp.life = 0.8;
+        jp.vx = -wfx * 2 + (Math.random() - 0.5);
+        jp.vy = 0.6 + Math.random();
+        jp.vz = -wfz * 2 + (Math.random() - 0.5);
+      }
+      jp.mesh.visible = true;
+    }
+    for (let i = 0; i < JET_N; i++) {
+      const jp = jetPool[i];
+      if (jp.life > 0) {
+        jp.life -= dt * 1.6;
+        if (jp.life <= 0) { jp.mesh.visible = false; jp.mesh.material.opacity = 0; }
+        else {
+          jp.vy -= dt * 4;
+          jp.mesh.position.x += jp.vx * dt;
+          jp.mesh.position.y += jp.vy * dt;
+          jp.mesh.position.z += jp.vz * dt;
+          jp.mesh.material.opacity = Math.min(0.9, jp.life * 2);
+        }
+      }
+    }
+
+    // 🔊 इंजन की आवाज़ बंद — उसकी जगह हल्का गाना बजता है (ऊपर सेट)
+    if (engineGain) engineGain.gain.value = 0;
+    if (state.mode === 'rail' && !state.flight && !muted) {   // पटरी: चुफ-चुफ साउंड रहेगा
+      const spd = Math.abs(state.speed);
+      railChuffT -= dt;
+      if (railChuffT <= 0) { railChuffT = Math.max(0.12, 0.42 - spd * 0.008); playChuff(1); }
+    }
+
+    // 🚦 सिग्नल बदलो + 🚓 पुलिस लाइट चमकाओ
+    signals.forEach(function (s) {
+      s.t += dt;
+      if (s.phase === 'red' && s.t > 7) { s.phase = 'green'; s.t = 0; }
+      else if (s.phase === 'green' && s.t > 9) { s.phase = 'yellow'; s.t = 0; }
+      else if (s.phase === 'yellow' && s.t > 2) { s.phase = 'red'; s.t = 0; }
+      s.lr.forEach(function (m) { m.material.color.setHex(s.phase === 'red' ? 0xff2222 : 0x330000); });
+      s.ly.forEach(function (m) { m.material.color.setHex(s.phase === 'yellow' ? 0xffdd22 : 0x332a00); });
+      s.lg.forEach(function (m) { m.material.color.setHex(s.phase === 'green' ? 0x22ff44 : 0x003300); });
+      // लाल के आखिरी 2 सेकंड में ही पीली टिमटिमाए — वरना सिर्फ लाल
+      if (s.phase === 'red' && s.t > 5) {
+        s.ly.forEach(function (m) { m.material.color.setHex(Math.floor(s.t * 3) % 2 ? 0xffdd22 : 0x332a00); });
+      }
+    });
+    policePosts.forEach(function (pp) {
+      const ph = Math.floor(elapsedT * 6) % 2;
+      pp.l1.material.color.setHex(ph ? 0xff2222 : 0x441111);
+      pp.l2.material.color.setHex(ph ? 0x2233ff : 0x111144);
+    });
+
+    // 🌧️ बारिश — कभी-कभार आसमान से पानी
+    rainT -= dt;
+    if (rainT <= 0 && rainOn <= 0) {
+      rainOn = 10 + Math.random() * 8;              // 10-18 सेकंड बारिश
+      rainT = 50 + Math.random() * 60;              // फिर अगली बारिश
+      rainPts.visible = true;
+      scene.background.setHex(SKY_RAIN);            // बादल छा गए
+      scene.fog.color.setHex(0x9db4c4);
+      const arr = rainGeo.attributes.position.array;
+      for (let i = 0; i < RAIN_N; i++) {
+        arr[i * 3] = car.position.x + (Math.random() - 0.5) * 80;
+        arr[i * 3 + 1] = Math.random() * 30;
+        arr[i * 3 + 2] = car.position.z + (Math.random() - 0.5) * 80;
+      }
+    }
+    if (rainOn > 0) {
+      rainOn -= dt;
+      if (rainOn <= 0) {
+        rainPts.visible = false;
+        scene.background.setHex(SKY_CLEAR);         // बादल हटे
+        scene.fog.color.setHex(0xd7e6ee);
+      }
+      const arr = rainGeo.attributes.position.array;
+      for (let i = 0; i < RAIN_N; i++) {
+        arr[i * 3 + 1] -= 42 * dt;
+        if (arr[i * 3 + 1] < 0) {
+          arr[i * 3] = car.position.x + (Math.random() - 0.5) * 80;
+          arr[i * 3 + 1] = 26 + Math.random() * 10;
+          arr[i * 3 + 2] = car.position.z + (Math.random() - 0.5) * 80;
+        }
+      }
+      rainGeo.attributes.position.needsUpdate = true;
+      // ⚡ बिजली कड़क — चमक + गड़गड़ाहट
+      boltT -= dt;
+      if (boltT <= 0) {
+        boltT = 2.5 + Math.random() * 5;
+        hemiLight.intensity = 2.6;
+        setTimeout(function () { hemiLight.intensity = 0.9; }, 110);
+        setTimeout(function () { hemiLight.intensity = 2.2; }, 230);
+        setTimeout(function () { hemiLight.intensity = 0.9; }, 360);
+        if (audioCtx && !muted && noiseBuf) {
+          const src = audioCtx.createBufferSource();
+          src.buffer = noiseBuf;
+          const f = audioCtx.createBiquadFilter();
+          f.type = 'lowpass';
+          f.frequency.value = 180;
+          const g = audioCtx.createGain();
+          g.gain.setValueAtTime(0.5, audioCtx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.4);
+          src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+          src.start(); src.stop(audioCtx.currentTime + 1.5);
+        }
+      }
+    }
+
+    // 🚓 पुलिस का पीछा — गाड़ी/ट्रैफिक तक पहुँचकर रोकेगी और चालान काटेगी
+    if (state.chase) {
+      const c = state.chase;
+      c.ttl -= dt;
+      const tgtPos = c.tv ? c.tv.mesh.position : car.position;
+      const dx = tgtPos.x - c.g.position.x, dz = tgtPos.z - c.g.position.z;
+      const d = Math.hypot(dx, dz);
+      if (state.phase === 'race' && d > 3.2 && c.ttl > 0) {
+        c.g.position.x += (dx / d) * 30 * dt;
+        c.g.position.z += (dz / d) * 30 * dt;
+        c.g.rotation.y = Math.atan2(dx, dz) + Math.PI;
+      } else {
+        state.fineCd = 2;
+        if (c.tv) {
+          // 🚨 रैश ट्रैफिक पकड़ा गया — ₹ 10 चालान!
+          c.tv.frozen = 2.5;
+          c.tv.curSpeed = 0;
+          showLapMessage('POLICE FINED ' + c.tv.vName + ' — ₹ 10!');
+        } else {
+          // तुम्हारा फाइन सिर्फ ₹ 10
+          state.policeStopT = 0.9;   // थोड़ा-सा रुकना — काम बीच में न रुके
+          state.speed = 0;
+          tryFine10('POLICE FINE — ₹ 10!');
+        }
+        thump();
+        state.chase = null;
+      }
+    }
+
+    // ✨ यूनिकॉर्न अंडरग्लो चमके
+    carGlow.material.opacity = 0.16 + Math.sin(elapsedT * 5) * 0.08;
+
+    // 🌈 रंग-बदलती ट्रैफिक गाड़ियाँ (3 — बैलेंस) + चमकता अंडरग्लो
+    rainbowCars.forEach(function (t) {
+      t.bmat.color.setHSL((elapsedT * 0.25 + t.hueOff) % 1, 0.9, 0.6);
+      if (t.glow) t.glow.material.color.setHSL((elapsedT * 0.25 + t.hueOff) % 1, 0.9, 0.6);
+    });
+
+    // 🦄 यूनिकॉर्न जादू — मेरी गाड़ी का रंग भी रेनबो में घूमे
+    bodyMat.color.setHSL((elapsedT * 0.1) % 1, 0.8, 0.6);
+
+    // 🎈 गुब्बारा हवा में तैरे
+    balloon.position.x += Math.sin(elapsedT * 0.08) * dt * 3;
+    balloon.position.y = 38 + Math.sin(elapsedT * 0.3) * 1.5;
+    balloon.rotation.y += dt * 0.04;
+
+    // 🎁 मिस्ट्री गिफ्ट — कभी-कभार रोड पर आते हैं (₹100 या स्पीड बूस्ट!)
+    giftT -= dt;
+    if (state.phase === 'race' && giftT <= 0) {   // गेम खत्म — नए गिफ्ट नहीं (सिर्फ रिस्टार्ट/रिफ्रेश पर आएं)
+      giftT = 6 + Math.random() * 8;
+      const gft = gifts.find(function (g) { return !g.active; });
+      if (gft) {
+        const ii = Math.floor(Math.random() * SEG);
+        const off = (Math.random() - 0.5) * 10;
+        gft.mesh.position.set(pts[ii].x + normals[ii].x * off, roadHeight(ii) + 0.9, pts[ii].z + normals[ii].z * off);
+        gft.mesh.visible = true;
+        gft.active = true;
+        gft.kind = Math.random() < 0.5 ? 0 : 1;   // 0=₹100, 1=स्पीड बूस्ट
+        showLapMessage('MYSTERY GIFT APPEARED ON THE ROAD!');
+      }
+    }
+    gifts.forEach(function (g) {
+      if (!g.active) return;
+      g.mesh.rotation.y += dt * 2;
+      const dx = car.position.x - g.mesh.position.x, dz = car.position.z - g.mesh.position.z;
+      if (dx * dx + dz * dz < 7 && Math.abs(car.position.y - g.mesh.position.y) < 2.5) {
+        g.active = false;
+        g.mesh.visible = false;
+        thump();
+        flowerBurst(g.mesh.position.x, g.mesh.position.z);   // 🌸 गिफ्ट से फूलों की बरसात
+        if (g.kind === 0) {
+          money += 100;
+          showLapMessage('MYSTERY GIFT — ₹ 100 BONUS!');
+          beep(1600); setTimeout(function () { beep(2000); }, 90);
+        } else {
+          state.boostT = 4;    // 4 सेकंड — स्पीड कैप बढ़ गया!
+          state.speed = 58;
+          showLapMessage('MYSTERY GIFT — SPEED BOOST 4s!');
+          beep(1300); setTimeout(function () { beep(1700); }, 90);
+        }
+      }
+    });
+
+    // 🏁 राइवल गाड़ियाँ चलें
+    updateRivals(dt);
+
+    // ⛽ पेट्रोल पंप पर रुको — पेट्रोल/CNG भरेगा (भराई पर ₹ 10 कटेगा)
+    let refuelOn = false;
+    fuelPumps.forEach(function (fp) {
+      const dx = car.position.x - fp.x, dz = car.position.z - fp.z;
+      if (dx * dx + dz * dz < 100 && Math.abs(state.speed) < 4 && (state.fuel || 0) < 99.5 && state.phase === 'race') {
+        if (!refuelOn) {
+          money = Math.max(0, money - 10);   // ⛽ भराई का किराया ₹ 10
+          // 🏁 1-2 राइवल पंप पर तुम्हारे ठीक पीछे कतार में खड़े होंगे
+          const myProg2 = (state.lap - 1) * SEG + (state.prog - state.lapStartProg);
+          const behind = rivals.slice().sort(function (a, b) { return (b.prog - myProg2) - (a.prog - myProg2); })
+            .filter(function (r) { return r.prog <= myProg2 + 5; });
+          let joined = 0;
+          for (let jj = 0; jj < Math.min(2, behind.length); jj++) {
+            const r = behind[jj];
+            r.prog = myProg2 - 4 - jj * 4.5;   // तुम्हारे ठीक पीछे कतार
+            r.curSpeed = 0; r.frozen = 6; r.fuelT = 40 + Math.random() * 40; r.cd = 6;
+            joined++;
+          }
+          showLapMessage('REFUELLING ₹10 — ' + joined + ' RIVAL' + (joined === 1 ? '' : 'S') + ' QUEUED WITH YOU! ⛽');
+        }
+        refuelOn = true;
+        state.fuel = Math.min(100, (state.fuel || 0) + 30 * dt);
+      }
+    });
+    state.refuelOn = refuelOn;
+
+    // 🌸 फूलों की बारिश — गिरना, लहराना, ज़मीन पर टिकना
+    flowerSpawnT -= dt;
+    if (flowerFall > 0) {
+      flowerFall -= dt;
+      if (flowerSpawnT <= 0) { flowerSpawnT = 0.05; spawnWinFlower(); }
+    }
+    winFlowers.forEach(function (w) {
+      if (!w.live) return;
+      if (!w.landed) {
+        w.ph += dt * 3;
+        w.m.position.y += w.vy * dt;
+        w.m.position.x += Math.sin(w.ph) * dt * 1.6;
+        w.m.rotation.z += w.spin * dt;
+        w.m.rotation.x += w.spin * 0.6 * dt;
+        if (w.m.position.y <= 0.45) {
+          w.landed = true;
+          w.m.rotation.set(-Math.PI / 2, 0, 0);
+        }
+      } else {
+        w.rest -= dt;
+        if (w.rest <= 0) { w.live = false; w.landed = false; w.m.visible = false; }
+      }
+    });
+
+    // HUD
+    if (state.phase !== 'menu') {
+      lapValueEl.textContent = Math.min(state.lap, TOTAL_LAPS) + ' / ' + TOTAL_LAPS;
+      starValueEl.textContent = '★ ' + starCount + '/' + TOTAL_STARS;
+      moneyValueEl.textContent = '₹ ' + money;
+      const rk = playerRank();
+      posValueEl.textContent = (ORD[rk - 1] || rk + 'th') + ' / ' + (rivals.length + 1);   // 🏆 लाइव जगह
+      fuelValueEl.textContent = '⛽ ' + Math.round(state.fuel || 0) + '%';
+      timeValueEl.textContent = (state.phase === 'race' ? state.lapTime : state.raceTime).toFixed(1);
+      speedValueEl.textContent = Math.round(Math.abs(state.speed) * 3.6);
+      if (state.bestLap) bestValueEl.textContent = state.bestLap.toFixed(1) + 's';
+      drawMinimap();
+    }
+
+    updateModeButtons();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // मेन्यू में भी गाड़ी स्टार्ट पर खड़ी दिखे
+  placeCarAtStart();
+
+  window.addEventListener('resize', function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+</script>
+</body>
+</html>
