@@ -6,3 +6,5 @@ README.md
 wrangler.jsonc
 wrangler.toml
 .assetsignore
+cf_login.log
+.wrangler
